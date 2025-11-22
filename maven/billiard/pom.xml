@@ -41,7 +41,7 @@
                         <!-- Usage: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>billiard.Main</mainClass>
+                            <mainClass>billiard.BilliardGame</mainClass>
                         </configuration>
                     </execution>
                     <execution>
@@ -52,7 +52,7 @@
                             <options>
                                 <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=localhost:8000</option>
                             </options>
-                            <mainClass>billiard.Main</mainClass>
+                            <mainClass>billiard.BilliardGame</mainClass>
                         </configuration>
                     </execution>
                     <execution>
@@ -62,7 +62,7 @@
                             <options>
                                 <option>-agentlib:jdwp=transport=dt_socket,server=n,address=${jpda.address}</option>
                             </options>
-                            <mainClass>billiard.Main</mainClass>
+                            <mainClass>billiard.BilliardGame</mainClass>
                         </configuration>
                     </execution>
                 </executions>

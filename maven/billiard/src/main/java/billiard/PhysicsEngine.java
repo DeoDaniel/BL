@@ -9,14 +9,14 @@ public class PhysicsEngine {
         if (a.sunk || b.sunk) return;
         double dx = b.x - a.x;
         double dy = b.y - a.y;
-        double dist = Math.sqrt(dx*dx + dy*dy);
+        double dist = Math.sqrt(dx * dx + dy * dy);
         if (dist == 0) return;
         double minDist = a.radius + b.radius;
         if (dist < minDist) {
             // push them apart
             double overlap = 0.5 * (minDist - dist);
-            double nx = dx/dist;
-            double ny = dy/dist;
+            double nx = dx / dist;
+            double ny = dy / dist;
             a.x -= nx * overlap;
             a.y -= ny * overlap;
             b.x += nx * overlap;
@@ -52,18 +52,12 @@ public class PhysicsEngine {
         }
     }
 
-    public static void handlePocketedBalls(Table table, Player player) {
+    public static void handlePocketedBalls(Table table, BilliardGame game) {
         for (Ball b : table.balls) {
             if (!b.sunk) {
                 for (Pocket p : table.pockets) {
                     if (b.checkPocketCollision(p)) {
-                        // assign to player if object ball
-                        if (!b.isCueBall() && player != null) {
-                            player.pocketBall(b);
-                        } else if (b.isCueBall() && player != null) {
-                            // cue ball pocketed - foul behaviour could be set
-                            player.fouled = true;
-                        }
+                        game.onBallPocketed(b);
                     }
                 }
             }

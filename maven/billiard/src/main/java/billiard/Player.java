@@ -6,7 +6,7 @@ import java.util.List;
 public class Player {
     public String name;
     public int ballsPocketed = 0;
-    public String assignedGroup = null; // "solids" or "stripes"
+    public BallGroup assignedGroup = null; // SOLIDS / STRIPES / null
     public boolean hasTurn = false;
     public boolean fouled = false;
     public List<Ball> pocketedBalls = new ArrayList<>();
@@ -15,18 +15,17 @@ public class Player {
         this.name = name;
     }
 
-    public void assignGroup(String group) {
+    public void assignGroup(BallGroup group) {
         this.assignedGroup = group;
     }
 
     public void pocketBall(Ball ball) {
         pocketedBalls.add(ball);
         ballsPocketed++;
-        // if 8-ball rules, you'd check if winning
     }
 
     public boolean hasWon() {
-        // simplistic: if pocketed 7 of assigned group (not robust)
+        // simple rule: kalau sudah 7 bola grupnya masuk
         return assignedGroup != null && ballsPocketed >= 7;
     }
 }

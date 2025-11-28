@@ -1,6 +1,7 @@
 package billiard;
 
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
 
 public class Ball {
     public double x;
@@ -37,18 +38,73 @@ public class Ball {
         y += vy * dt;
     }
 
-public void render(GraphicsContext g) {
-    if (sunk) return;
+    public void render(GraphicsContext g) {
+        if (sunk) return;
 
-    if (number == 0) {
-        g.setFill(javafx.scene.paint.Color.WHITE); // cue ball
-    } else {
-        g.setFill(javafx.scene.paint.Color.ORANGE); // sementara untuk test
+        double d = radius * 2;
+        double left = x - radius;
+        double top = y - radius;
+
+        // CUE BALL
+        if (isCueBall()) {
+            g.setFill(Color.WHITE);
+            g.fillOval(left, top, d, d);
+            return;
+        }
+
+        // Tentukan warna berdasarkan nomor
+        Color mainColor;
+        if (number == 8) {
+            mainColor = Color.BLACK;
+        } else {
+            int idx = isSolid() ? number : number - 8; // 1..7
+            switch (idx) {
+                case 1:
+                    mainColor = Color.YELLOW;
+                    break;
+                case 2:
+                    mainColor = Color.BLUE;
+                    break;
+                case 3:
+                    mainColor = Color.RED;
+                    break;
+                case 4:
+                    mainColor = Color.PURPLE;
+                    break;
+                case 5:
+                    mainColor = Color.ORANGE;
+                    break;
+                case 6:
+                    mainColor = Color.GREEN;
+                    break;
+                case 7:
+                    mainColor = Color.BROWN;
+                    break;
+                default:
+                    mainColor = Color.GRAY;
+            }
+        }
+
+        if (isStripe()) {
+            // dasar putih
+            g.setFill(Color.WHITE);
+            g.fillOval(left, top, d, d);
+
+            // stripe warna di tengah
+            g.setFill(mainColor);
+            double stripeHeight = d * 0.4;
+            double stripeTop = y - stripeHeight / 2.0;
+            g.fillRect(left, stripeTop, d, stripeHeight);
+        } else {
+            // solid (termasuk bola 8)
+            g.setFill(mainColor);
+            g.fillOval(left, top, d, d);
+        }
+
+        // lingkaran putih kecil di tengah (area nomor)
+        g.setFill(Color.WHITE);
+        g.fillOval(x - radius * 0.4, y - radius * 0.4, radius * 0.8, radius * 0.8);
     }
-
-    g.fillOval(x - radius, y - radius, radius * 2, radius * 2);
-}
-
 
     public void applyForce(double power, double angle) {
         // Simplified impulse
@@ -58,29 +114,43 @@ public void render(GraphicsContext g) {
 
     public void checkWallCollision(Table table) {
         if (sunk) return;
-        // left/right
-        if (x - radius < 0) {
-            x = radius;
-            vx = -vx;
-        } else if (x + radius > table.WIDTH) {
-            x = table.WIDTH - radius;
+
+        double left   = table.PADDING + table.INNER_PADDING + radius;
+        double right  = table.WIDTH - table.PADDING - table.INNER_PADDING - radius;
+        double top    = table.PADDING + table.INNER_PADDING + radius;
+        double bottom = table.HEIGHT - table.PADDING - table.INNER_PADDING - radius;
+
+        // LEFT
+        if (x < left) {
+            x = left;
             vx = -vx;
         }
-        // top/bottom
-        if (y - radius < 0) {
-            y = radius;
+
+        // RIGHT
+        if (x > right) {
+            x = right;
+            vx = -vx;
+        }
+
+        // TOP
+        if (y < top) {
+            y = top;
             vy = -vy;
-        } else if (y + radius > table.HEIGHT) {
-            y = table.HEIGHT - radius;
+        }
+
+        // BOTTOM
+        if (y > bottom) {
+            y = bottom;
             vy = -vy;
         }
     }
+
 
     public boolean checkPocketCollision(Pocket pocket) {
         if (sunk) return false;
         double dx = x - pocket.x;
         double dy = y - pocket.y;
-        double distSq = dx*dx + dy*dy;
+        double distSq = dx * dx + dy * dy;
         double rsum = radius + pocket.radius;
         if (distSq <= rsum * rsum) {
             sunk = true;

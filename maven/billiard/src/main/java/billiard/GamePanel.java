@@ -10,7 +10,6 @@ public class GamePanel extends Canvas {
     public Table table;
     public Cue cue;
     public boolean mousePressed = false;
-    public double shotPower = 0;
     private double dragStartX, dragStartY;
     private BilliardGame game;
 
@@ -21,7 +20,7 @@ public class GamePanel extends Canvas {
         this.game = game;
         table = new Table();
         // create cue ball
-        Ball cueBall = new Ball(width * 0.25, height / 2, 0);
+        Ball cueBall = new Ball(width * 0.25, height/2, 0);
         table.balls.add(cueBall);
         // add balls in a standard 8-ball triangular rack (balls 1..15)
         double baseX = width * 0.75;
@@ -59,9 +58,8 @@ public class GamePanel extends Canvas {
         cue.updateAngle(e.getX(), e.getY());
         double dx = dragStartX - e.getX();
         double dy = dragStartY - e.getY();
-        double dist = Math.sqrt(dx * dx + dy * dy);
+        double dist = Math.sqrt(dx*dx + dy*dy);
         cue.setPower(dist);
-        shotPower = Math.min(1.0, dist / 200.0);
     }
 
     private void mouseReleased(MouseEvent e) {
@@ -75,40 +73,42 @@ public class GamePanel extends Canvas {
     }
 
     public void paintComponent(GraphicsContext g) {
-        // clear
-        g.clearRect(0, 0, getWidth(), getHeight());
-        // render table
-        table.render(g);
-        // render cue with power visualization
-        cue.render(g, shotPower);
+        try {
+            // clear
+            g.clearRect(0, 0, getWidth(), getHeight());
+            // render table
+            table.render(g);
+            // render cue with power visualization
+            cue.render(g, cue.getPowerPercent());
+        } catch (Exception e) {
+            System.err.println("Error rendering: " + e.getMessage());
+        }
     }
 
     public void updateGameLoop() {
-        double dt = 1.0 / 60.0;
-        table.update(dt);
-        PhysicsEngine.checkAllBallCollisions(table.balls);
-        PhysicsEngine.handlePocketedBalls(table, game);
-
-        // hide/show cue based on cue ball motion (don't show if sunk)
-        if (cue != null && cue.cueBall != null) {
-            if (cue.cueBall.isMoving()) {
-                cue.hide();
-            } else {
-                if (!cue.cueBall.sunk) cue.show();
-            }
-        }
-
-        // update state: when all balls stop, tentukan apakah ganti turn atau tidak
-        if (table.areBallsStopped()) {
-            if (game.state == GameState.BALLS_MOVING) {
-                if (game.foulThisTurn || !game.scoredThisTurn) {
-                    game.switchTurn();
+        try {
+            double dt = 1.0 / 60.0;
+            table.update(dt);
+            PhysicsEngine.checkAllBallCollisions(table.balls);
+            PhysicsEngine.handlePocketedBalls(table, game);
+            
+            // hide/show cue based on cue ball motion (don't show if sunk)
+            if (cue != null && cue.cueBall != null) {
+                if (cue.cueBall.isMoving()) {
+                    cue.hide();
                 } else {
-                    // tetap pemain yang sama, tapi reset status turn
-                    game.startTurn();
-                    game.updateHud();
+                    if (!cue.cueBall.sunk) cue.show();
                 }
             }
+
+            // update state: when all balls stop, switch turn if they were moving
+            if (table.areBallsStopped()) {
+                if (game.state == GameState.BALLS_MOVING) {
+                    game.switchTurn();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error in game loop: " + e.getMessage());
         }
     }
 
@@ -118,12 +118,16 @@ public class GamePanel extends Canvas {
             long last = 0;
             @Override
             public void handle(long now) {
-                if (last == 0) last = now;
-                double elapsed = (now - last) / 1e9;
-                if (elapsed >= 1.0 / 60.0) {
-                    updateGameLoop();
-                    paintComponent(gc);
-                    last = now;
+                try {
+                    if (last == 0) last = now;
+                    double elapsed = (now - last) / 1e9;
+                    if (elapsed >= 1.0/60.0) {
+                        updateGameLoop();
+                        paintComponent(gc);
+                        last = now;
+                    }
+                } catch (Exception e) {
+                    System.err.println("AnimationTimer error: " + e.getMessage());
                 }
             }
         };

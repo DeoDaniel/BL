@@ -21,15 +21,16 @@ public class Table {
         double rightX  = WIDTH - PADDING;
         double topY    = PADDING;
         double bottomY = HEIGHT - PADDING;
+        double cornerOffset = 12; // jarak pocket dari sudut meja
 
         // 6 pocket: 3 atas, 3 bawah
-        pockets[0] = new Pocket(leftX, topY);
+        pockets[0] = new Pocket(leftX + cornerOffset, topY + cornerOffset);
         pockets[1] = new Pocket(WIDTH / 2, topY);
-        pockets[2] = new Pocket(rightX, topY);
+        pockets[2] = new Pocket(rightX - cornerOffset, topY + cornerOffset);
 
-        pockets[3] = new Pocket(leftX, bottomY);
+        pockets[3] = new Pocket(leftX + cornerOffset, bottomY - cornerOffset);
         pockets[4] = new Pocket(WIDTH / 2, bottomY);
-        pockets[5] = new Pocket(rightX, bottomY);
+        pockets[5] = new Pocket(rightX - cornerOffset, bottomY - cornerOffset);
     }
 
 
@@ -46,21 +47,114 @@ public class Table {
         g.fillRect(0, HEIGHT - cornerSize, cornerSize, cornerSize);
         g.fillRect(WIDTH - cornerSize, HEIGHT - cornerSize, cornerSize, cornerSize);
 
-        // ==== 3. Light green cushion edge ====
-        g.setFill(javafx.scene.paint.Color.web("#1db34b"));
-        g.fillRect(PADDING, PADDING, WIDTH - PADDING * 2, HEIGHT - PADDING * 2);
-
-        // ==== 4. Main playing field ====
+        // ==== 3. Main playing field ====
         javafx.scene.paint.Color darkGreen = javafx.scene.paint.Color.web("#0a8f2d");
         javafx.scene.paint.Color midGreen  = javafx.scene.paint.Color.web("#1fc255");
 
         g.setFill(darkGreen);
         g.fillRect(
-            PADDING + INNER_PADDING,
-            PADDING + INNER_PADDING,
-            WIDTH - (PADDING + INNER_PADDING) * 2,
-            HEIGHT - (PADDING + INNER_PADDING) * 2
+            PADDING + INNER_PADDING - 15,
+            PADDING + INNER_PADDING - 15,
+            WIDTH - (PADDING + INNER_PADDING) * 1.5,
+            HEIGHT - (PADDING + INNER_PADDING) * 1.5
         );
+
+        // ==== 4. Light green cushion edge (trapezoid polygons) ====
+        javafx.scene.paint.Color cushionColor = javafx.scene.paint.Color.web("#1db34b");
+        double cushionWidth = INNER_PADDING + 2;
+        double centerX = WIDTH / 2;
+        double pocketGapWidth = 30;  // Gap width for middle pocket
+        
+        // Top-left cushion trapezoid
+        g.setFill(cushionColor);
+        double[] topLeftXs = {
+            PADDING + cushionWidth, 
+            centerX - pocketGapWidth / 2, 
+            centerX - pocketGapWidth / 2 - cushionWidth * 0.5, 
+            PADDING + cushionWidth * 2.2
+        };
+        double[] topLeftYs = {
+            PADDING, 
+            PADDING, 
+            PADDING + cushionWidth, 
+            PADDING + cushionWidth
+        };
+        g.fillPolygon(topLeftXs, topLeftYs, 4);
+        
+        // Top-right cushion trapezoid
+        double[] topRightXs = {
+            centerX + pocketGapWidth / 2, 
+            WIDTH - PADDING - cushionWidth, 
+            WIDTH - PADDING - cushionWidth * 2.1, 
+            centerX + pocketGapWidth / 2 + cushionWidth * 0.5
+        };
+        double[] topRightYs = {
+            PADDING, 
+            PADDING, 
+            PADDING + cushionWidth, 
+            PADDING + cushionWidth
+        };
+        g.fillPolygon(topRightXs, topRightYs, 4);
+        
+        // Bottom-left cushion trapezoid
+        double[] bottomLeftXs = {
+            PADDING + cushionWidth * 2.1, 
+            centerX - pocketGapWidth / 2 - cushionWidth * 0.5, 
+            centerX - pocketGapWidth / 2, 
+            PADDING + cushionWidth
+        };
+        double[] bottomLeftYs = {
+            HEIGHT - PADDING - cushionWidth, 
+            HEIGHT - PADDING - cushionWidth, 
+            HEIGHT - PADDING, 
+            HEIGHT - PADDING
+        };
+        g.fillPolygon(bottomLeftXs, bottomLeftYs, 4);
+        
+        // Bottom-right cushion trapezoid
+        double[] bottomRightXs = {
+            centerX + pocketGapWidth / 2, 
+            WIDTH - PADDING - cushionWidth, 
+            WIDTH - PADDING - cushionWidth * 2.1, 
+            centerX + pocketGapWidth / 2 + cushionWidth * 0.5
+        };
+        double[] bottomRightYs = {
+            HEIGHT - PADDING, 
+            HEIGHT - PADDING, 
+            HEIGHT - PADDING - cushionWidth, 
+            HEIGHT - PADDING - cushionWidth
+        };
+        g.fillPolygon(bottomRightXs, bottomRightYs, 4);
+        
+        // Left cushion trapezoid
+        double[] leftXs = {
+            PADDING, 
+            PADDING + cushionWidth, 
+            PADDING + cushionWidth, 
+            PADDING
+        };
+        double[] leftYs = {
+            PADDING + cushionWidth, 
+            PADDING + cushionWidth * 2.1, 
+            HEIGHT - PADDING - cushionWidth * 2.1, 
+            HEIGHT - PADDING - cushionWidth
+        };
+        g.fillPolygon(leftXs, leftYs, 4);
+        
+        // Right cushion trapezoid
+        double[] rightXs = {
+            WIDTH - PADDING - cushionWidth, 
+            WIDTH - PADDING, 
+            WIDTH - PADDING, 
+            WIDTH - PADDING - cushionWidth
+        };
+        double[] rightYs = {
+            PADDING + cushionWidth * 2.1, 
+            PADDING + cushionWidth, 
+            HEIGHT - PADDING - cushionWidth, 
+            HEIGHT - PADDING - cushionWidth * 2.1
+        };
+        g.fillPolygon(rightXs, rightYs, 4);
 
         // gradient highlight center
         g.setFill(midGreen.deriveColor(0, 1, 1, 0.25));
@@ -83,9 +177,9 @@ public class Table {
         for (Ball b : balls) {
             b.update(dt);
             b.checkWallCollision(this);
-
-            b.vx *= Math.pow(FRICTION, dt * 60);
-            b.vy *= Math.pow(FRICTION, dt * 60);
+            
+            // Apply realistic friction model
+            PhysicsEngine.applyFriction(b, dt);
         }
     }
 

@@ -3,7 +3,7 @@ package billiard;
 public class Pocket {
     public double x;
     public double y;
-    public double radius = 28;
+    public double radius = 17;
 
     public Pocket(double x, double y) {
         this.x = x;

@@ -25,6 +25,10 @@ public class Cue {
         powerPercent = Math.min(1.0, Math.max(0.0, distanceDragged / 200.0));
     }
 
+    public double getPowerPercent() {
+        return powerPercent;
+    }
+
     public void shoot() {
         double power = maxPower * powerPercent;
         cueBall.applyForce(power, angle);
@@ -37,16 +41,17 @@ public class Cue {
         double baseX = cueBall.x;
         double baseY = cueBall.y;
 
-        // panjang cue berubah berdasarkan power
-        double length = 140 + powerPercent * 130;
+        // cue moves back and forth based on power (constant length)
+        double cueLength = 140;
+        double backDistance = powerPercent * 80;  // moves back up to 80 units
 
-        // ujung stick (depan)
+        // ujung stick (depan - contact point with cue ball)
         double tipX = baseX - Math.cos(angle) * 25;
         double tipY = baseY - Math.sin(angle) * 25;
 
-        // pangkal panjang
-        double endX = baseX - Math.cos(angle) * (length + 25);
-        double endY = baseY - Math.sin(angle) * (length + 25);
+        // pangkal panjang (adjusted for back movement)
+        double endX = baseX - Math.cos(angle) * (cueLength + 25 + backDistance);
+        double endY = baseY - Math.sin(angle) * (cueLength + 25 + backDistance);
 
         // ================================
         // 1. SHADOW (bayangan)
@@ -73,8 +78,8 @@ public class Cue {
         // 3. GRIP (bagian pegangan belakang)
         // ================================
         double gripLen = 70;
-        double gripX = baseX - Math.cos(angle) * (gripLen + 40);
-        double gripY = baseY - Math.sin(angle) * (gripLen + 40);
+        double gripX = baseX - Math.cos(angle) * (gripLen + 40 + backDistance);
+        double gripY = baseY - Math.sin(angle) * (gripLen + 40 + backDistance);
 
         g.setLineWidth(7);
         g.setStroke(Color.rgb(40, 40, 40));

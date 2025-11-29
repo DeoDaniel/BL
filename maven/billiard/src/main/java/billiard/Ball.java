@@ -8,7 +8,7 @@ public class Ball {
     public double y;
     public double vx;
     public double vy;
-    public double radius = 11.5;
+    public double radius = 13;
     public int number; // 0 = cue ball, 1-15 object balls
     public boolean sunk = false;
 
@@ -123,25 +123,25 @@ public class Ball {
         // LEFT
         if (x < left) {
             x = left;
-            vx = -vx;
+            PhysicsEngine.applyWallCollision(this, true);
         }
 
         // RIGHT
         if (x > right) {
             x = right;
-            vx = -vx;
+            PhysicsEngine.applyWallCollision(this, true);
         }
 
         // TOP
         if (y < top) {
             y = top;
-            vy = -vy;
+            PhysicsEngine.applyWallCollision(this, false);
         }
 
         // BOTTOM
         if (y > bottom) {
             y = bottom;
-            vy = -vy;
+            PhysicsEngine.applyWallCollision(this, false);
         }
     }
 

@@ -61,7 +61,7 @@ public class Table {
 
         // ==== 4. Light green cushion edge (trapezoid polygons) ====
         javafx.scene.paint.Color cushionColor = javafx.scene.paint.Color.web("#1db34b");
-        double cushionWidth = INNER_PADDING + 2;
+        double cushionWidth = INNER_PADDING + 1;
         double centerX = WIDTH / 2;
         double pocketGapWidth = 30;  // Gap width for middle pocket
         
@@ -174,12 +174,39 @@ public class Table {
 
 
     public void update(double dt) {
+        // 1. Update posisi semua bola (tanpa friction dulu)
         for (Ball b : balls) {
-            b.update(dt);
-            b.checkWallCollision(this);
+            if (!b.sunk) {
+                b.update(dt);
+            }
+        }
+        
+        // 2. Check collision antar bola (PENTING!)
+        // Ini sudah dipanggil di GamePanel, tapi lebih baik ada di sini juga
+        for (int i = 0; i < balls.size(); i++) {
+            Ball b1 = balls.get(i);
+            if (b1.sunk) continue;
             
-            // Apply realistic friction model
-            PhysicsEngine.applyFriction(b, dt);
+            for (int j = i + 1; j < balls.size(); j++) {
+                Ball b2 = balls.get(j);
+                if (b2.sunk) continue;
+                
+                PhysicsEngine.resolveBallCollision(b1, b2);
+            }
+        }
+        
+        // 3. Check wall collision SETELAH ball collision
+        for (Ball b : balls) {
+            if (!b.sunk) {
+                b.checkWallCollision(this);
+            }
+        }
+        
+        // 4. Apply friction SEKALI SAJA di akhir
+        for (Ball b : balls) {
+            if (!b.sunk) {
+                PhysicsEngine.applyFriction(b, dt);
+            }
         }
     }
 

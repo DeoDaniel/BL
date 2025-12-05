@@ -8,7 +8,7 @@ public class Ball {
     public double y;
     public double vx;
     public double vy;
-    public double radius = 13;
+    public double radius = 10;
     public int number; // 0 = cue ball, 1-15 object balls
     public boolean sunk = false;
 

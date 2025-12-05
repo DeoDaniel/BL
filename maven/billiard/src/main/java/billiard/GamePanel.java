@@ -88,11 +88,17 @@ public class GamePanel extends Canvas {
     public void updateGameLoop() {
         try {
             double dt = 1.0 / 60.0;
+            
+            // Update table (sudah include semua collision & friction)
             table.update(dt);
-            PhysicsEngine.checkAllBallCollisions(table.balls);
+            
+            // HAPUS baris ini karena sudah ada di table.update():
+            // PhysicsEngine.checkAllBallCollisions(table.balls); // <-- HAPUS!
+            
+            // Check pocket collision
             PhysicsEngine.handlePocketedBalls(table, game);
             
-            // hide/show cue based on cue ball motion (don't show if sunk)
+            // Update cue visibility
             if (cue != null && cue.cueBall != null) {
                 if (cue.cueBall.isMoving()) {
                     cue.hide();
@@ -101,17 +107,16 @@ public class GamePanel extends Canvas {
                 }
             }
 
-            // update state: when all balls stop, switch turn if they were moving
-            if (table.areBallsStopped()) {
-                if (game.state == GameState.BALLS_MOVING) {
-                    game.switchTurn();
-                }
+        // Check game state
+        if (table.areBallsStopped()) {
+            if (game.state == GameState.BALLS_MOVING) {
+                game.switchTurn();
             }
-        } catch (Exception e) {
-            System.err.println("Error in game loop: " + e.getMessage());
         }
+    } catch (Exception e) {
+        System.err.println("Error in game loop: " + e.getMessage());
     }
-
+}
     private void startGameLoop() {
         GraphicsContext gc = getGraphicsContext2D();
         loop = new AnimationTimer() {

@@ -165,49 +165,63 @@ public class BilliardGame extends Application {
     }
 
     public void onBallPocketed(Ball ball) {
-        if (ball.isCueBall()) {
-            foulThisTurn = true;
-            currentPlayer.fouled = true;
-            updateHud();
-            return;
-        }
-
-        currentPlayer.pocketBall(ball);
-
-        // --- LOGIKA PENENTUAN GRUP (SOLIDS/STRIPES) ---
-        if (currentPlayer.assignedGroup == null) {
-            // Jika belum ada grup (Open Table), bola pertama yang masuk menentukan grup
-            if (ball.isSolid()) {
-                currentPlayer.assignGroup(BallGroup.SOLIDS);
-                getOtherPlayer().assignGroup(BallGroup.STRIPES);
-            } else if (ball.isStripe()) {
-                currentPlayer.assignGroup(BallGroup.STRIPES);
-                getOtherPlayer().assignGroup(BallGroup.SOLIDS);
+            // 1. Cek Foul Bola Putih
+            if (ball.isCueBall()) {
+                foulThisTurn = true;
+                currentPlayer.fouled = true;
+                updateHud();
+                return;
             }
-        }
 
-        if (currentPlayer.assignedGroup == null) {
-            scoredThisTurn = true;
-        } else {
-            boolean correctGroup =
-                    (currentPlayer.assignedGroup == BallGroup.SOLIDS && ball.isSolid()) ||
-                    (currentPlayer.assignedGroup == BallGroup.STRIPES && ball.isStripe());
+            // 2. Cek Bola 8 (Hitam)
+            if (ball.number == 8) {
+                state = GameState.GAME_OVER;
+                // (Tambahkan logika menang/kalah detail di sini jika perlu)
+                return;
+            }
 
-            if (correctGroup) {
-                scoredThisTurn = true;
+            // 3. Logika Penetapan Kepemilikan Bola
+            if (currentPlayer.assignedGroup == null) {
+                // --- KONDISI OPEN TABLE (Belum ada grup) ---
+                // Pemain yang memasukkan bola pertama kali menentukan grupnya
+                
+                currentPlayer.pocketBall(ball); // Masuk ke pemain saat ini
+                scoredThisTurn = true;          // Dia berhak lanjut main
+
+                // Tentukan grup berdasarkan bola yang masuk
+                if (ball.isSolid()) {
+                    currentPlayer.assignGroup(BallGroup.SOLIDS);
+                    getOtherPlayer().assignGroup(BallGroup.STRIPES);
+                } else if (ball.isStripe()) {
+                    currentPlayer.assignGroup(BallGroup.STRIPES);
+                    getOtherPlayer().assignGroup(BallGroup.SOLIDS);
+                }
+
             } else {
-                foulThisTurn = true; 
+                // --- KONDISI SUDAH ADA GRUP (Solids vs Stripes) ---
+                
+                // Cek apakah bola ini sesuai dengan grup pemain saat ini
+                boolean isMyBall = (currentPlayer.assignedGroup == BallGroup.SOLIDS && ball.isSolid()) ||
+                                (currentPlayer.assignedGroup == BallGroup.STRIPES && ball.isStripe());
+
+                if (isMyBall) {
+                    // A. Jika bola MILIK SENDIRI
+                    currentPlayer.pocketBall(ball); // Masukkan ke list pemain ini
+                    scoredThisTurn = true;          // Lanjut main (kecuali nanti foul)
+                } else {
+                    // B. Jika bola MILIK LAWAN (Salah Masuk)
+                    getOtherPlayer().pocketBall(ball); // <--- KUNCI PERBAIKAN: Masukkan ke list LAWAN
+                    
+                    // Jika memasukkan bola lawan, giliran berakhir (scoredThisTurn tetap false)
+                    // Note: Dalam aturan standar, ini loss of turn, tapi bukan foul (bola putih di tangan),
+                    // kecuali aturan bar tertentu.
+                    scoredThisTurn = false; 
+                }
             }
+
+            // Update tampilan agar bola muncul di sisi pemain yang benar
+            updateHud();
         }
-
-        if (ball.number == 8) {
-            state = GameState.GAME_OVER;
-        }
-
-        // PENTING: Update HUD setiap kali bola masuk agar tulisan grup muncul
-        updateHud();
-    }
-
     public boolean checkWinCondition() {
         for (Player p : players) {
             if (p.hasWon()) {

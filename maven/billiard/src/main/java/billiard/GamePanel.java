@@ -46,14 +46,41 @@ public class GamePanel extends Canvas {
     }
 
     private void mousePressed(MouseEvent e) {
-        if (e.getButton() == MouseButton.PRIMARY) {
+        // KONDISI 1: Jika sedang BALL_IN_HAND, klik untuk menaruh bola (Confirm)
+        if (game.state == GameState.BALL_IN_HAND) {
+            // Cek apakah posisi valid (tidak menumpuk bola lain & di dalam meja)
+            // Untuk penyederhanaan: Kita anggap klik kiri menyetujui posisi bola
+            game.state = GameState.AIMING;
+            cue.show(); // Munculkan stick lagi
+            return;
+        }
+
+        // KONDISI 2: Normal Aiming
+        if (game.state == GameState.AIMING && e.getButton() == MouseButton.PRIMARY) {
             mousePressed = true;
             dragStartX = e.getX();
             dragStartY = e.getY();
         }
     }
-
+    
     private void mouseDragged(MouseEvent e) {
+        // LOGIKA BARU: Jika Ball in Hand, bola putih ikut mouse
+        if (game.state == GameState.BALL_IN_HAND) {
+            Ball cueBall = table.balls.get(0);
+            
+            // Batasi agar bola tidak keluar dari meja (Clamping)
+            double margin = table.PADDING + table.INNER_PADDING + cueBall.radius;
+            double newX = Math.max(margin, Math.min(getWidth() - margin, e.getX()));
+            double newY = Math.max(margin, Math.min(getHeight() - margin, e.getY()));
+            
+            cueBall.x = newX;
+            cueBall.y = newY;
+            cueBall.vx = 0; // Pastikan diam
+            cueBall.vy = 0;
+            return; 
+        }
+
+        // Logika lama (menarik stick)
         if (!mousePressed) return;
         cue.updateAngle(e.getX(), e.getY());
         double dx = dragStartX - e.getX();
@@ -63,11 +90,15 @@ public class GamePanel extends Canvas {
     }
 
     private void mouseReleased(MouseEvent e) {
+        if (game.state == GameState.BALL_IN_HAND) return; // Jangan nembak pas mindahin bola
+
         if (!mousePressed) return;
         mousePressed = false;
-        // Shoot
+        
+        // Reset flag collision sebelum menembak
+        game.cueBallHitAnyBall = false; 
+
         cue.shoot();
-        // hide cue while the cue ball is in motion
         cue.hide();
         game.state = GameState.BALLS_MOVING;
     }
@@ -92,6 +123,22 @@ public class GamePanel extends Canvas {
             // Update table (sudah include semua collision & friction)
             table.update(dt);
             
+            // --- DETEKSI APAKAH CUE BALL MENABRAK ---
+            Ball cueBall = table.balls.get(0);
+            if (!cueBall.sunk && cueBall.isMoving()) {
+                for (Ball b : table.balls) {
+                    if (b == cueBall || b.sunk) continue;
+                    
+                    double dx = cueBall.x - b.x;
+                    double dy = cueBall.y - b.y;
+                    double dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // Jika nempel, anggap tabrakan
+                    if (dist <= cueBall.radius + b.radius + 0.1) {
+                        game.cueBallHitAnyBall = true;
+                    }
+                }
+            }
             // HAPUS baris ini karena sudah ada di table.update():
             // PhysicsEngine.checkAllBallCollisions(table.balls); // <-- HAPUS!
             
@@ -110,6 +157,17 @@ public class GamePanel extends Canvas {
         // Check game state
         if (table.areBallsStopped()) {
             if (game.state == GameState.BALLS_MOVING) {
+                // Cek Foul: Jika bola putih TIDAK mengenai bola apapun (No Hit)
+                if (!game.cueBallHitAnyBall) {
+                    System.out.println("FOUL: No ball hit!");
+                    game.foulThisTurn = true;
+                    game.currentPlayer.fouled = true;
+                    game.triggerBallInHand(); // <--- Pemicu Ball in Hand karena No Hit
+                    
+                    // Jangan switchTurn dulu disini, karena logic switchTurn akan dipanggil di bawah
+                    // Tapi karena foul, nanti player lawan dapat giliran + ball in hand
+                }
+                
                 game.switchTurn();
             }
         }

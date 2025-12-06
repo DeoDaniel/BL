@@ -22,6 +22,8 @@ public class BilliardGame extends Application {
     public Player currentPlayer;
     public GameState state = GameState.AIMING;
     public PhysicsEngine physics = new PhysicsEngine();
+    // Tambahkan di bagian atas class BilliardGame
+    public boolean cueBallHitAnyBall = false; // Flag untuk mengecek apakah bola putih kena sasaran
 
     // --- HUD COMPONENTS ---
     private Label p1NameLabel;
@@ -170,6 +172,9 @@ public class BilliardGame extends Application {
                 foulThisTurn = true;
                 currentPlayer.fouled = true;
                 updateHud();
+                
+                // PENTING: Jangan return; langsung. Kita harus set Ball in Hand.
+                triggerBallInHand(); 
                 return;
             }
 
@@ -247,6 +252,26 @@ public class BilliardGame extends Application {
 
         renderBallsToContainer(p1, p1BallContainer);
         renderBallsToContainer(p2, p2BallContainer);
+    }
+    
+    // Method untuk mereset bola putih ke mode "Ball in Hand"
+    public void triggerBallInHand() {
+        state = GameState.BALL_IN_HAND;
+        
+        // Cari bola putih
+        Ball cueBall = panel.table.balls.get(0);
+        
+        // Jika bola putih masuk lubang (sunk), kita hidupkan lagi
+        if (cueBall.sunk) {
+            cueBall.sunk = false;
+            cueBall.vx = 0;
+            cueBall.vy = 0;
+            // Taruh sementara di tengah meja (nanti user geser sendiri)
+            cueBall.x = panel.getWidth() / 2;
+            cueBall.y = panel.getHeight() / 2;
+            panel.cue.cueBall = cueBall; // Re-link ke stick
+            panel.cue.visible = false;   // Sembunyikan stick saat memindahkan bola
+        }
     }
 
     private void highlightActivePlayer(Player p, VBox panelBox) {

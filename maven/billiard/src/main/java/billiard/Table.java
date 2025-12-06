@@ -192,9 +192,32 @@ public class Table {
                 if (b2.sunk) continue;
                 
                 PhysicsEngine.resolveBallCollision(b1, b2);
+                
+                // --- LOGIKA DETEKSI HIT ---
+                // Jika salah satu bola adalah Cue Ball (nomor 0)
+                // Dan collision terjadi (kita cek sederhana: apakah velocity berubah drastis? 
+                // Atau hitung jarak. Tapi karena resolveBallCollision void, kita pakai trik jarak di sini)
+                
+                double dx = b1.x - b2.x;
+                double dy = b1.y - b2.y;
+                double dist = Math.sqrt(dx*dx + dy*dy);
+                
+                // Jika mereka bersentuhan
+                if (dist <= b1.radius + b2.radius + 0.5) { // +0.5 toleransi
+                    if (b1.isCueBall() || b2.isCueBall()) {
+                        // Kita butuh akses ke variable game.cueBallHitAnyBall.
+                        // Karena Table.java tidak pegang instance BilliardGame secara langsung,
+                        // cara paling cepat: set variabel static atau public static di BilliardGame,
+                        // ATAU instance BilliardGame harus di-pass ke table.
+                        
+                        // SOLUSI MUDAH:
+                        // Anggaplah kita akses via static method (Not ideal but works)
+                        // ATAU lebih baik: Logika ini dipindah ke GamePanel.
+                    }
+                }
             }
-        }
-        
+        }    
+
         // 3. Check wall collision SETELAH ball collision
         for (Ball b : balls) {
             if (!b.sunk) {

@@ -38,6 +38,10 @@ public class BilliardGame extends Application {
     // Turn info
     public boolean scoredThisTurn = false;
     public boolean foulThisTurn = false;
+    
+    // Ball 8 tracking
+    public boolean ball8Pocketed = false;
+    public String ball8Winner = null; // Nama pemain yang menang dengan bola 8
 
     @Override
     public void start(Stage primaryStage) {
@@ -178,10 +182,36 @@ public class BilliardGame extends Application {
                 return;
             }
 
-            // 2. Cek Bola 8 (Hitam)
+            // 2. Cek Bola 8 (Hitam) - LOGIKA BARU
             if (ball.number == 8) {
-                state = GameState.GAME_OVER;
-                // (Tambahkan logika menang/kalah detail di sini jika perlu)
+                // Cek apakah pemain saat ini sudah memasukkan semua 7 bola grupnya
+                boolean currentPlayerFinishedGroup = hasPlayerFinishedGroup(currentPlayer);
+                
+                if (currentPlayerFinishedGroup) {
+                    // MENANG! Pemain sudah memasukkan semua bolanya dan bola 8
+                    ball8Pocketed = true;
+                    ball8Winner = currentPlayer.name;
+                    state = GameState.GAME_OVER;
+                    System.out.println("GAME OVER! " + currentPlayer.name + " MENANG!");
+                } else {
+                    // FOUL! Bola 8 masuk sebelum waktunya
+                    System.out.println("FOUL: Bola 8 masuk sebelum waktunya! Dikembalikan ke posisi semula.");
+                    
+                    // Kembalikan bola 8 ke posisi awal (tengah meja area rack)
+                    ball.sunk = false;
+                    ball.x = panel.getWidth() * 0.75; // Posisi rack
+                    ball.y = panel.getHeight() / 2;
+                    ball.vx = 0;
+                    ball.vy = 0;
+                    
+                    // Cari posisi kosong jika ada bola lain di situ
+                    findEmptySpotForBall(ball);
+                    
+                    // Set foul dan ball in hand untuk lawan
+                    foulThisTurn = true;
+                    currentPlayer.fouled = true;
+                }
+                updateHud();
                 return;
             }
 
@@ -214,13 +244,14 @@ public class BilliardGame extends Application {
                     currentPlayer.pocketBall(ball); // Masukkan ke list pemain ini
                     scoredThisTurn = true;          // Lanjut main (kecuali nanti foul)
                 } else {
-                    // B. Jika bola MILIK LAWAN (Salah Masuk)
-                    getOtherPlayer().pocketBall(ball); // <--- KUNCI PERBAIKAN: Masukkan ke list LAWAN
+                    // B. Jika bola MILIK LAWAN (Salah Masuk) = FOUL!
+                    getOtherPlayer().pocketBall(ball); // Masukkan ke list LAWAN
                     
-                    // Jika memasukkan bola lawan, giliran berakhir (scoredThisTurn tetap false)
-                    // Note: Dalam aturan standar, ini loss of turn, tapi bukan foul (bola putih di tangan),
-                    // kecuali aturan bar tertentu.
-                    scoredThisTurn = false; 
+                    // FOUL: Memasukkan bola lawan
+                    foulThisTurn = true;
+                    currentPlayer.fouled = true;
+                    scoredThisTurn = false;
+                    System.out.println("FOUL: " + currentPlayer.name + " memasukkan bola lawan!"); 
                 }
             }
 
@@ -235,6 +266,74 @@ public class BilliardGame extends Application {
             }
         }
         return false;
+    }
+    
+    /**
+     * Cek apakah pemain sudah memasukkan semua 7 bola dari grupnya
+     */
+    public boolean hasPlayerFinishedGroup(Player p) {
+        if (p.assignedGroup == null) return false;
+        
+        // Hitung berapa bola grup pemain ini yang sudah masuk (dari semua bola sunk)
+        int count = 0;
+        for (Ball b : panel.table.balls) {
+            if (b.sunk && !b.isCueBall() && b.number != 8) {
+                if (p.assignedGroup == BallGroup.SOLIDS && b.isSolid()) {
+                    count++;
+                } else if (p.assignedGroup == BallGroup.STRIPES && b.isStripe()) {
+                    count++;
+                }
+            }
+        }
+        
+        return count >= 7; // Semua 7 bola dari grup sudah masuk
+    }
+    
+    /**
+     * Cari posisi kosong untuk bola (digunakan saat mengembalikan bola 8)
+     */
+    private void findEmptySpotForBall(Ball ball) {
+        double centerX = panel.getWidth() * 0.75;
+        double centerY = panel.getHeight() / 2;
+        double spacing = ball.radius * 2.5;
+        
+        // Coba posisi tengah dulu
+        if (isPositionEmpty(centerX, centerY, ball)) {
+            ball.x = centerX;
+            ball.y = centerY;
+            return;
+        }
+        
+        // Cari posisi kosong dalam spiral
+        for (int ring = 1; ring <= 5; ring++) {
+            for (int i = 0; i < 8 * ring; i++) {
+                double angle = (2 * Math.PI * i) / (8 * ring);
+                double testX = centerX + Math.cos(angle) * spacing * ring;
+                double testY = centerY + Math.sin(angle) * spacing * ring;
+                
+                if (isPositionEmpty(testX, testY, ball)) {
+                    ball.x = testX;
+                    ball.y = testY;
+                    return;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Cek apakah posisi kosong dari bola lain
+     */
+    private boolean isPositionEmpty(double x, double y, Ball excludeBall) {
+        for (Ball b : panel.table.balls) {
+            if (b == excludeBall || b.sunk) continue;
+            double dx = x - b.x;
+            double dy = y - b.y;
+            double dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < b.radius * 2 + 5) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // --- LOGIKA UPDATE TAMPILAN (HUD) ---

@@ -3,8 +3,8 @@ package billiard;
 public class Pocket {
     public double x;
     public double y;
-    // Ditingkatkan dari 17 menjadi 25 untuk membuat lubang lebih besar
-    public double radius = 21; 
+    // Radius pocket diperbesar untuk hitbox lebih besar
+    public double radius = 25; 
 
     public Pocket(double x, double y) {
         this.x = x;
@@ -17,8 +17,8 @@ public class Pocket {
         // Jarak dari pusat bola ke pusat pocket
         double distance = Math.sqrt(dx * dx + dy * dy); 
         
-        // Bola masuk jika jaraknya lebih kecil dari radius pocket 
-        // dikurangi sedikit untuk "memancing" bola masuk
-        return distance <= radius * 0.9; 
+        // Bola masuk jika jaraknya cukup dekat dengan pusat pocket
+        // Hitbox lebih forgiving
+        return distance <= radius; 
     }
 }

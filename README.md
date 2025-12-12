@@ -50,7 +50,7 @@ Sebuah game billiard 8-ball klasik yang dibangun menggunakan JavaFX dengan physi
 1. **Clone repository**
 
 ```bash
-git clone https://github.com/username/billiard-javafx.git
+git clone https://github.com/DeoDaniel/BL.git
 cd billiard-javafx
 ```
 

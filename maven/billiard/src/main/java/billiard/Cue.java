@@ -1,16 +1,17 @@
 package billiard;
 
+import java.util.List;
+
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
-import java.util.List;
 
 public class Cue {
     public Ball cueBall;
     public double angle = 0;
-    public double maxPower = 2500; // Increased power for stronger shots
+    public double maxPower = 2000; // Increased power for stronger shots
     public boolean visible = true;
     private double powerPercent = 0;
     private List<Ball> allBalls; // Referensi ke semua bola untuk aim line

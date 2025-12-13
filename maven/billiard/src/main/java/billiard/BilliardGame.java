@@ -1,5 +1,8 @@
 package billiard;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -7,12 +10,13 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class BilliardGame extends Application {
 
@@ -34,6 +38,10 @@ public class BilliardGame extends Application {
     private HBox p2BallContainer;
     private VBox p1PanelBox;
     private VBox p2PanelBox;
+    private Label stopwatchLabel; // Stopwatch label untuk menampilkan waktu
+    
+    // Stopwatch
+    private Stopwatch stopwatch = new Stopwatch();
 
     // Turn info
     public boolean scoredThisTurn = false;
@@ -47,34 +55,9 @@ public class BilliardGame extends Application {
     public void start(Stage primaryStage) {
         this.frame = primaryStage;
 
-        // Init Players
-        players.add(new Player("PLAYER 1"));
-        players.add(new Player("PLAYER 2"));
-        currentPlayer = players.get(0);
-        currentPlayer.hasTurn = true;
-        startTurn();
-
-        // Game Panel
-        panel = new GamePanel(1120, 560, this);
-
-        // Root Layout
-        BorderPane root = new BorderPane();
-        StackPane center = new StackPane(panel);
-        center.setStyle("-fx-background-color: #0d0d0d;"); 
-        root.setCenter(center);
-
-        // --- CUSTOM HUD SETUP ---
-        HBox topBar = createTopBar();
-        root.setTop(topBar);
-
-        // Update pertama kali
-        updateHud();
-
-        Scene scene = new Scene(root, 1120, 650); 
-
-        primaryStage.setTitle("Billiard Game JavaFX");
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        // Show main menu
+        MainMenu menu = new MainMenu(primaryStage, this);
+        menu.show();
     }
 
     private HBox createTopBar() {
@@ -119,13 +102,20 @@ public class BilliardGame extends Application {
         p2PanelBox.setPadding(new Insets(8, 20, 8, 20));
         p2PanelBox.setStyle("-fx-background-color: #333333; -fx-background-radius: 12; -fx-border-color: #555; -fx-border-radius: 12;");
 
+        // --- STOPWATCH (CENTER) ---
+        stopwatchLabel = new Label("00:00");
+        stopwatchLabel.setStyle("-fx-text-fill: #ffd700; -fx-font-weight: bold; -fx-font-size: 24;");
+
         // --- MAIN TOP BAR ---
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+        Region spacer2 = new Region();
+        HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-        HBox topBar = new HBox(10, p1PanelBox, spacer, p2PanelBox);
+        HBox topBar = new HBox(10, p1PanelBox, spacer, stopwatchLabel, spacer2, p2PanelBox);
         topBar.setPadding(new Insets(10));
         topBar.setStyle("-fx-background-color: #1a1a1a; -fx-border-color: #444; -fx-border-width: 0 0 2 0;");
+        topBar.setAlignment(Pos.CENTER);
         
         return topBar;
     }
@@ -135,19 +125,44 @@ public class BilliardGame extends Application {
     }
 
     public void startNewGame() {
-        players.forEach(p -> {
-            p.ballsPocketed = 0;
-            p.assignedGroup = null;
-            p.fouled = false;
-            p.pocketedBalls.clear();
-        });
+        // Clear previous players if any
+        players.clear();
+        
+        // Init Players
+        players.add(new Player("PLAYER 1"));
+        players.add(new Player("PLAYER 2"));
         currentPlayer = players.get(0);
         currentPlayer.hasTurn = true;
         startTurn();
 
-        panel = new GamePanel(1120, 560, this);
-        state = GameState.AIMING;
+        // Root Layout (create first so we can pass to GamePanel)
+        BorderPane root = new BorderPane();
+        
+        // Create center StackPane first
+        StackPane center = new StackPane();
+        center.setStyle("-fx-background-color: #0d0d0d;"); 
+        
+        // Game Panel (pass both root and center)
+        panel = new GamePanel(1120, 560, this, root, center);
+        
+        center.getChildren().add(panel);
+        root.setCenter(center);
+
+        // --- CUSTOM HUD SETUP ---
+        HBox topBar = createTopBar();
+        root.setTop(topBar);
+
+        // Update pertama kali
         updateHud();
+        
+        // Start stopwatch when game begins
+        stopwatch.start();
+
+        Scene scene = new Scene(root, 1120, 650); 
+
+        frame.setTitle("Billiard Game JavaFX");
+        frame.setScene(scene);
+        frame.show();
     }
 
     public void startTurn() {
@@ -351,6 +366,11 @@ public class BilliardGame extends Application {
 
         renderBallsToContainer(p1, p1BallContainer);
         renderBallsToContainer(p2, p2BallContainer);
+        
+        // Update stopwatch display
+        if (stopwatchLabel != null) {
+            stopwatchLabel.setText(stopwatch.getFormattedTime());
+        }
     }
     
     // Method untuk mereset bola putih ke mode "Ball in Hand"

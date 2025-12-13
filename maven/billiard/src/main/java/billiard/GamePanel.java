@@ -3,21 +3,30 @@ package billiard;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 
 public class GamePanel extends Canvas {
     public Table table;
     public Cue cue;
     public boolean mousePressed = false;
     private double dragStartX, dragStartY;
-    private BilliardGame game;
+    private final BilliardGame game;
+    private final BorderPane gameRoot;
+    private final StackPane gameCenter;
+    private boolean isPaused = false;
 
     private AnimationTimer loop;
 
-    public GamePanel(double width, double height, BilliardGame game) {
+    public GamePanel(double width, double height, BilliardGame game, BorderPane gameRoot, StackPane gameCenter) {
         super(width, height);
         this.game = game;
+        this.gameRoot = gameRoot;
+        this.gameCenter = gameCenter;
         table = new Table();
         // create cue ball
         Ball cueBall = new Ball(width * 0.25, height/2, 0);
@@ -43,6 +52,11 @@ public class GamePanel extends Canvas {
         setOnMouseDragged(this::mouseDragged);
         setOnMouseMoved(this::mouseMoved);
         setOnMouseReleased(this::mouseReleased);
+        setOnKeyPressed(this::keyPressed);
+        
+        // Request focus for key events
+        setFocusTraversable(true);
+        requestFocus();
 
         startGameLoop();
     }
@@ -136,6 +150,45 @@ public class GamePanel extends Canvas {
         }
     }
     
+    private void keyPressed(KeyEvent e) {
+        if (e.getCode() == KeyCode.ESCAPE) {
+            if (!isPaused) {
+                isPaused = true;
+                showPauseMenu();
+            }
+        }
+    }
+    
+    private void showPauseMenu() {
+        // Stop the game loop
+        loop.stop();
+        
+        PauseMenu pauseMenu = new PauseMenu(this);
+        
+        pauseMenu.setOnContinue(() -> {
+            isPaused = false;
+            loop.start();
+            requestFocus(); // Restore focus
+        });
+        
+        pauseMenu.setOnReset(() -> {
+            loop.stop();
+            // Remove pause menu from parent
+            gameCenter.getChildren().removeIf(node -> node instanceof PauseMenu);
+            game.startNewGame();
+        });
+        
+        pauseMenu.setOnMainMenu(() -> {
+            loop.stop();
+            game.frame.close();
+            MainMenu menu = new MainMenu(game.frame, game);
+            menu.show();
+        });
+        
+        // Add pause menu overlay to the center StackPane
+        gameCenter.getChildren().add(pauseMenu);
+        pauseMenu.requestFocus();
+    }
     private void mouseReleased(MouseEvent e) {
         if (game.state == GameState.BALL_IN_HAND) return; // Jangan nembak pas mindahin bola
         if (e.getButton() == MouseButton.SECONDARY) return; // Ignore right click release
@@ -257,6 +310,7 @@ public class GamePanel extends Canvas {
                     double elapsed = (now - last) / 1e9;
                     if (elapsed >= 1.0/60.0) {
                         updateGameLoop();
+                        game.updateHud(); // Update HUD including stopwatch every frame
                         paintComponent(gc);
                         last = now;
                     }

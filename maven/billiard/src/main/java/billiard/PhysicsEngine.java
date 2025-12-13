@@ -10,8 +10,9 @@ public class PhysicsEngine {
     // Coefficient of restitution for wall collisions
     private static final double WALL_RESTITUTION = 0.95;
     
-    // Minimum speed threshold
-    private static final double MIN_SPEED = 0.3;
+    // Minimum speed threshold below which balls stop completely
+    // Threshold ini mencegah bola terus bergerak sangat lambat
+    private static final double MIN_SPEED_THRESHOLD = 5;
 
     /**
      * Resolve elastic collision between two balls using proper physics.
@@ -68,14 +69,14 @@ public class PhysicsEngine {
         b.vy += impulse * ny;
         
         // === STEP 5: Clamp very small velocities ===
-        if (Math.abs(a.vx) < MIN_SPEED && Math.abs(a.vy) < MIN_SPEED) {
-            if (a.vx * a.vx + a.vy * a.vy < MIN_SPEED * MIN_SPEED) {
+        if (Math.abs(a.vx) < MIN_SPEED_THRESHOLD && Math.abs(a.vy) < MIN_SPEED_THRESHOLD) {
+            if (a.vx * a.vx + a.vy * a.vy < MIN_SPEED_THRESHOLD * MIN_SPEED_THRESHOLD) {
                 a.vx = 0;
                 a.vy = 0;
             }
         }
-        if (Math.abs(b.vx) < MIN_SPEED && Math.abs(b.vy) < MIN_SPEED) {
-            if (b.vx * b.vx + b.vy * b.vy < MIN_SPEED * MIN_SPEED) {
+        if (Math.abs(b.vx) < MIN_SPEED_THRESHOLD && Math.abs(b.vy) < MIN_SPEED_THRESHOLD) {
+            if (b.vx * b.vx + b.vy * b.vy < MIN_SPEED_THRESHOLD * MIN_SPEED_THRESHOLD) {
                 b.vx = 0;
                 b.vy = 0;
             }
@@ -101,10 +102,11 @@ public class PhysicsEngine {
      * Improved with speed-dependent friction.
      */
     public static void applyFriction(Ball ball, double dt) {
-        double speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        double speedSq = ball.vx * ball.vx + ball.vy * ball.vy;
+        double speed = Math.sqrt(speedSq);
         
-        if (speed < 0.3) {
-            // Stop ball if it's moving very slowly
+        // Bola berhenti sepenuhnya jika di bawah threshold
+        if (speed < MIN_SPEED_THRESHOLD) {
             ball.vx = 0;
             ball.vy = 0;
             return;

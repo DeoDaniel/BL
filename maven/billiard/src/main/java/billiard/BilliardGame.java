@@ -28,6 +28,8 @@ public class BilliardGame extends Application {
     public PhysicsEngine physics = new PhysicsEngine();
     // Tambahkan di bagian atas class BilliardGame
     public boolean cueBallHitAnyBall = false; // Flag untuk mengecek apakah bola putih kena sasaran
+    public GameSession loadedSession; // For loading saved games
+    public PlayerVsAIMode aiMode = null; // AI mode handler (null if not using AI)
 
     // --- HUD COMPONENTS ---
     private Label p1NameLabel;
@@ -41,11 +43,9 @@ public class BilliardGame extends Application {
     private Label stopwatchLabel; // Stopwatch label untuk menampilkan waktu
     
     // Stopwatch
-    private Stopwatch stopwatch = new Stopwatch();
-
-    // Turn info
-    public boolean scoredThisTurn = false;
+    public Stopwatch stopwatch = new Stopwatch();
     public boolean foulThisTurn = false;
+    public boolean scoredThisTurn = false;  // Track if player scored on this turn
     
     // Ball 8 tracking
     public boolean ball8Pocketed = false;
@@ -120,17 +120,38 @@ public class BilliardGame extends Application {
         return topBar;
     }
 
+    public void setLoadedSession(GameSession session) {
+        this.loadedSession = session;
+    }
+
     public static void main(String[] args) {
         launch(args);
     }
 
     public void startNewGame() {
+        // Get current game mode from settings
+        String gameMode = Settings.getInstance().getGameMode();
+        startGameWithMode(gameMode);
+    }
+
+    /**
+     * Start game with specific game mode
+     */
+    public void startGameWithMode(String gameMode) {
         // Clear previous players if any
         players.clear();
+        aiMode = null; // Reset AI mode
         
-        // Init Players
-        players.add(new Player("PLAYER 1"));
-        players.add(new Player("PLAYER 2"));
+        // Init Players based on game mode
+        if ("Player vs AI".equals(gameMode)) {
+            players.add(new Player("PLAYER"));
+            players.add(new Player("Computer (AI)"));
+        } else {
+            // Original, 3 Players, 9-Ball, Straight Pool - all use 2 players for now
+            players.add(new Player("PLAYER 1"));
+            players.add(new Player("PLAYER 2"));
+        }
+        
         currentPlayer = players.get(0);
         currentPlayer.hasTurn = true;
         startTurn();
@@ -144,6 +165,11 @@ public class BilliardGame extends Application {
         
         // Game Panel (pass both root and center)
         panel = new GamePanel(1120, 560, this, root, center);
+        
+        // Initialize AI mode if "Player vs AI"
+        if ("Player vs AI".equals(gameMode)) {
+            aiMode = new PlayerVsAIMode(this, panel);
+        }
         
         center.getChildren().add(panel);
         root.setCenter(center);

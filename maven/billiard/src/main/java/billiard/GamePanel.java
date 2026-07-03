@@ -163,7 +163,7 @@ public class GamePanel extends Canvas {
         // Stop the game loop
         loop.stop();
         
-        PauseMenu pauseMenu = new PauseMenu(this);
+        PauseMenu pauseMenu = new PauseMenu(this, game.frame, game);
         
         pauseMenu.setOnContinue(() -> {
             isPaused = false;
@@ -226,6 +226,11 @@ public class GamePanel extends Canvas {
     public void updateGameLoop() {
         try {
             double dt = 1.0 / 60.0;
+            
+            // Update AI mode if active
+            if (game.aiMode != null) {
+                game.aiMode.update(dt);
+            }
             
             // Update table (sudah include semua collision & friction)
             table.update(dt);

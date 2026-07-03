@@ -4,21 +4,17 @@ import java.util.List;
 
 public class PhysicsEngine {
     // Coefficient of restitution (elasticity) for ball-to-ball collisions
-    // Tinggi = lebih elastis/bouncy
-    private static final double RESTITUTION = 0.98;
+    // Real billiard balls: ~0.92-0.93 (phenolic resin)
+    private static final double RESTITUTION = 0.93;
     
     // Coefficient of restitution for wall collisions
-    private static final double WALL_RESTITUTION = 0.95;
+    // Rails absorb more energy than ball-to-ball collisions
+    private static final double WALL_RESTITUTION = 0.88;
     
     // Minimum speed threshold below which balls stop completely
-    // Threshold ini mencegah bola terus bergerak sangat lambat
-    private static final double MIN_SPEED_THRESHOLD = 5;
+    // Lower threshold for finer movement control
+    private static final double MIN_SPEED_THRESHOLD = 0.1;
 
-    /**
-     * Resolve elastic collision between two balls using proper physics.
-     * Accounts for equal mass, momentum conservation, and energy loss (restitution).
-     * Improved version with better separation and more accurate physics.
-     */
     public static void resolveBallCollision(Ball a, Ball b) {
         if (a.sunk || b.sunk) return;
         
@@ -98,29 +94,31 @@ public class PhysicsEngine {
 
     /**
      * Apply friction to the ball based on its velocity.
-     * Simulates rolling resistance and air resistance.
-     * Improved with speed-dependent friction.
+     * Simulates rolling resistance on the billiard table.
+     * Realistic decay: ~8-15% velocity loss per second depending on table condition.
      */
     public static void applyFriction(Ball ball, double dt) {
         double speedSq = ball.vx * ball.vx + ball.vy * ball.vy;
         double speed = Math.sqrt(speedSq);
         
-        // Bola berhenti sepenuhnya jika di bawah threshold
+        // Stop completely if below threshold
         if (speed < MIN_SPEED_THRESHOLD) {
             ball.vx = 0;
             ball.vy = 0;
             return;
         }
         
-        // Rolling friction (konstan)
-        double rollingFriction = 0.996;
+        // Rolling resistance coefficient (~0.985 = ~1.5% loss per frame)
+        // Real billiard tables: ball can roll for 20-30 seconds from initial shot
+        double rollingFriction = 0.985;
         
-        // Air friction (quadratic drag) - semakin cepat semakin besar hambatannya
-        double airDragCoefficient = 0.0001;
+        // Air resistance is minimal on a billiard table - mostly rolling resistance
+        // Very slight quadratic drag for high speeds
+        double airDragCoefficient = 0.00005;
         double airDrag = 1.0 - (airDragCoefficient * speed);
-        airDrag = Math.max(0.95, airDrag); // Clamp agar tidak terlalu ekstrem
+        airDrag = Math.max(0.98, airDrag); // Minimal impact
         
-        // Combined friction
+        // Combined friction (dominated by rolling resistance)
         double totalFriction = rollingFriction * airDrag;
         
         // Apply friction

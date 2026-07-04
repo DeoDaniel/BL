@@ -1,5 +1,9 @@
 package billiard;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -28,23 +32,18 @@ public class GamePanel extends Canvas {
         this.gameRoot = gameRoot;
         this.gameCenter = gameCenter;
         table = new Table();
-        // create cue ball
-        Ball cueBall = new Ball(width * 0.25, height/2, 0);
+        Ball cueBall = new Ball(width * 0.25, height / 2, 0);
         table.balls.add(cueBall);
-        // add balls in a standard 8-ball triangular rack (balls 1..15)
-        double baseX = width * 0.75;
-        double baseY = height / 2;
-        double spacingX = 25; // horizontal spacing between rows
-        double spacingY = 15; // vertical half-spacing between balls
-        int num = 1;
-        for (int row = 0; row < 5 && num <= 15; row++) {
-            double x = baseX + row * spacingX;
-            for (int j = 0; j <= row && num <= 15; j++) {
-                double y = baseY - row * spacingY + j * (2 * spacingY);
-                table.balls.add(new Ball(x, y, num));
-                num++;
-            }
+
+        String gameMode = Settings.getInstance().getGameMode();
+        if ("9-Ball".equals(gameMode)) {
+            setupNineBallRack(width, height);
+        } else if ("Straight Pool".equals(gameMode)) {
+            setupStraightPoolRack(width, height);
+        } else {
+            setupStandardRack(width, height);
         }
+
         cue = new Cue(cueBall);
         cue.setTableReference(table); // Set reference untuk aim line
 
@@ -61,7 +60,106 @@ public class GamePanel extends Canvas {
         startGameLoop();
     }
 
+    private void setupStandardRack(double width, double height) {
+        double baseX = width * 0.75;
+        double baseY = height / 2;
+        double spacingX = 25;
+        double spacingY = 15;
+        int num = 1;
+        for (int row = 0; row < 5 && num <= 15; row++) {
+            double x = baseX + row * spacingX;
+            for (int j = 0; j <= row && num <= 15; j++) {
+                double y = baseY - row * spacingY + j * (2 * spacingY);
+                table.balls.add(new Ball(x, y, num));
+                num++;
+            }
+        }
+    }
+
+    private void setupStraightPoolRack(double width, double height) {
+        double centerX = width * 0.75;
+        double centerY = height / 2;
+        double spacingX = 24;
+        double spacingY = 24;
+
+        // Rotated traditional straight pool arrangement: horizontal triangle
+        // Ball 1 and 5 should occupy the two corner positions on the long side.
+        int[][] columns = {
+            {1},
+            {2, 3},
+            {4, 5, 6},
+            {7, 8, 9, 10},
+            {11, 12, 13, 14, 15}
+        };
+
+        // Build a flat list of the remaining balls, excluding 1 and 5
+        List<Integer> remaining = new ArrayList<>();
+        for (int n = 2; n <= 15; n++) {
+            if (n != 5) {
+                remaining.add(n);
+            }
+        }
+        Collections.shuffle(remaining);
+
+        // Place the rack, preserving 1 in the first column and 5 in one corner of the last column.
+        int index = 0;
+        for (int col = 0; col < columns.length; col++) {
+            int[] colBalls = columns[col];
+            int count = colBalls.length;
+            for (int row = 0; row < count; row++) {
+                int number;
+                if (col == 0 && row == 0) {
+                    number = 1;
+                } else if (col == columns.length - 1 && row == count - 1) {
+                    number = 5;
+                } else {
+                    number = remaining.get(index++);
+                }
+                double x = centerX + col * spacingX;
+                double y = centerY + (row - (count - 1) / 2.0) * spacingY;
+                table.balls.add(new Ball(x, y, number));
+            }
+        }
+    }
+
+    private void setupNineBallRack(double width, double height) {
+        double centerX = width * 0.75;
+        double centerY = height / 2;
+        double spacingX = 24;
+        double spacingY = 24;
+
+        // 9-ball diamond rack oriented horizontally: columns of 1, 2, 3, 2, 1
+        int[][] columns = {
+            {1},
+            {2, 3},
+            {4, 9, 5},
+            {6, 7},
+            {8}
+        };
+
+        for (int col = 0; col < columns.length; col++) {
+            int[] colBalls = columns[col];
+            int count = colBalls.length;
+            for (int row = 0; row < count; row++) {
+                double x = centerX + col * spacingX;
+                double y = centerY + (row - (count - 1) / 2.0) * spacingY;
+                table.balls.add(new Ball(x, y, colBalls[row]));
+            }
+        }
+    }
+
+    private boolean isAITurnWaiting() {
+        return game.aiMode != null
+            && game.currentPlayer != null
+            && game.players.indexOf(game.currentPlayer) == 1
+            && game.state == GameState.AIMING;
+    }
+
     private void mousePressed(MouseEvent e) {
+        if (isAITurnWaiting()) {
+            return;
+        }
+
         // KONDISI 1: Jika sedang BALL_IN_HAND, klik untuk menaruh bola (Confirm)
         if (game.state == GameState.BALL_IN_HAND) {
             // Cek apakah posisi valid (tidak menumpuk bola lain & di dalam meja)
@@ -92,6 +190,10 @@ public class GamePanel extends Canvas {
     }
     
     private void mouseDragged(MouseEvent e) {
+        if (isAITurnWaiting()) {
+            return;
+        }
+
         // LOGIKA BARU: Jika Ball in Hand, bola putih ikut mouse
         if (game.state == GameState.BALL_IN_HAND) {
             Ball cueBall = table.balls.get(0);
@@ -144,6 +246,10 @@ public class GamePanel extends Canvas {
     }
 
     private void mouseMoved(MouseEvent e) {
+        if (isAITurnWaiting()) {
+            return;
+        }
+
         // Update aim line saat mouse bergerak (hanya jika angle belum dikunci)
         if (game.state == GameState.AIMING && !cue.isAngleLocked()) {
             cue.updateAngle(e.getX(), e.getY());
@@ -190,6 +296,10 @@ public class GamePanel extends Canvas {
         pauseMenu.requestFocus();
     }
     private void mouseReleased(MouseEvent e) {
+        if (isAITurnWaiting()) {
+            return;
+        }
+
         if (game.state == GameState.BALL_IN_HAND) return; // Jangan nembak pas mindahin bola
         if (e.getButton() == MouseButton.SECONDARY) return; // Ignore right click release
 
@@ -230,6 +340,10 @@ public class GamePanel extends Canvas {
             // Update AI mode if active
             if (game.aiMode != null) {
                 game.aiMode.update(dt);
+            }
+
+            if (cue != null) {
+                cue.updateAnimation(dt);
             }
             
             // Update table (sudah include semua collision & friction)

@@ -14,6 +14,9 @@ public class PhysicsEngine {
     // Minimum speed threshold below which balls stop completely
     // Lower threshold for finer movement control
     private static final double MIN_SPEED_THRESHOLD = 0.1;
+    // Impact sound thresholds and scaling
+    private static final double SOUND_IMPACT_THRESHOLD = 20.0; // below this, don't play impact SFX
+    private static final double SOUND_MAX_IMPACT_SPEED = 600.0; // impact speed mapped to full volume
 
     public static void resolveBallCollision(Ball a, Ball b) {
         if (a.sunk || b.sunk) return;
@@ -63,6 +66,14 @@ public class PhysicsEngine {
         a.vy -= impulse * ny;
         b.vx += impulse * nx;
         b.vy += impulse * ny;
+        // play collision SFX scaled by impact velocity (dvn)
+        double impactSpeed = dvn; // relative speed along normal
+        if (impactSpeed >= SOUND_IMPACT_THRESHOLD) {
+            double relative = Math.min(1.0, impactSpeed / SOUND_MAX_IMPACT_SPEED);
+            double global = Settings.getInstance().getSfxVolume();
+            double finalVol = relative * global;
+            SoundManager.playBallHit(finalVol);
+        }
         
         // === STEP 5: Clamp very small velocities ===
         if (Math.abs(a.vx) < MIN_SPEED_THRESHOLD && Math.abs(a.vy) < MIN_SPEED_THRESHOLD) {
@@ -142,6 +153,8 @@ public class PhysicsEngine {
             if (!b.sunk) {
                 for (Pocket p : table.pockets) {
                     if (b.checkPocketCollision(p)) {
+                        // play pocket SFX
+                        SoundManager.playBallIntoPocket();
                         game.onBallPocketed(b);
                     }
                 }

@@ -206,7 +206,10 @@ public class PauseMenu extends StackPane {
         Slider bgmSlider = new Slider(0, 1.0, settings.getBgmVolume());
         bgmSlider.setStyle("-fx-control-inner-background: #1f7f4d;");
         bgmSlider.setPrefWidth(250);
-        bgmSlider.valueProperty().addListener((obs, oldVal, newVal) -> settings.setBgmVolume(newVal.doubleValue()));
+        bgmSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            settings.setBgmVolume(newVal.doubleValue());
+            SoundManager.updateBgmVolume(newVal.doubleValue());
+        });
 
         Label bgmValueLabel = new Label(String.format("%.0f%%", settings.getBgmVolume() * 100));
         bgmValueLabel.setFont(Font.font("Arial", 12));
@@ -266,7 +269,7 @@ public class PauseMenu extends StackPane {
         resolutionLabel.setMinWidth(120);
 
         ComboBox<String> resolutionCombo = new ComboBox<>();
-        resolutionCombo.getItems().addAll("1120x650", "1280x720", "1600x900", "1920x1080");
+        resolutionCombo.getItems().addAll("1120x720", "1280x720", "1600x900", "1920x1080");
         resolutionCombo.setValue(settings.getScreenResolution());
         resolutionCombo.setStyle(
             "-fx-font-size: 12;" +
@@ -341,6 +344,19 @@ public class PauseMenu extends StackPane {
         var result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String fileName = result.get().trim();
+
+            if (GameSaveManager.getSaveFileNames().contains(fileName)) {
+                Alert overwriteConfirm = new Alert(Alert.AlertType.CONFIRMATION);
+                overwriteConfirm.setTitle("Overwrite Save?");
+                overwriteConfirm.setHeaderText("A save with that name already exists.");
+                overwriteConfirm.setContentText("Do you want to overwrite the existing save file?\n\n" + fileName);
+
+                var overwriteResult = overwriteConfirm.showAndWait();
+                if (overwriteResult.isEmpty() || overwriteResult.get() != javafx.scene.control.ButtonType.OK) {
+                    return;
+                }
+            }
+
             GameSession session = new GameSession();
             session.sessionName = fileName;
             session.gameMode = Settings.getInstance().getGameMode() != null ? Settings.getInstance().getGameMode() : "Original";
@@ -355,6 +371,16 @@ public class PauseMenu extends StackPane {
                     ball.x, ball.y, ball.vx, ball.vy,
                     ball.number, ball.sunk, ball.radius
                 );
+                // Determine which player (if any) pocketed this ball
+                int pocketedBy = -1;
+                for (int pi = 0; pi < game.players.size(); pi++) {
+                    Player p = game.players.get(pi);
+                    if (p.pocketedBalls.contains(ball)) {
+                        pocketedBy = pi;
+                        break;
+                    }
+                }
+                ballState.pocketedByPlayer = pocketedBy;
                 session.ballStates.add(ballState);
             }
             
@@ -368,6 +394,8 @@ public class PauseMenu extends StackPane {
             
             // Capture elapsed time
             session.elapsedTimeMillis = game.stopwatch.getElapsedMillis();
+            session.gameFinished = (game.state == GameState.GAME_OVER);
+            session.winnerName = game.ball8Winner;
             
             if (GameSaveManager.saveGame(session, fileName)) {
                 // Show success message

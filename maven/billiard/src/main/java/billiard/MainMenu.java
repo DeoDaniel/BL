@@ -8,6 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
@@ -59,8 +60,17 @@ public class MainMenu {
         // Play button
         Button playButton = createButton("PLAY");
         playButton.setOnAction(e -> {
+            // Always start a fresh game using the last selected mode
+            // Clear any loaded session and reset the stopwatch to zero
+            game.setLoadedSession(null);
+            game.stopwatch.reset();
+            // Ensure Settings' game mode is used by startNewGame()
             game.startNewGame();
         });
+
+        // Leaderboard button
+        Button leaderboardButton = createButton("LEADERBOARD");
+        leaderboardButton.setOnAction(e -> showLeaderboardView());
 
         // Load button
         Button loadButton = createButton("LOAD GAME");
@@ -88,7 +98,7 @@ public class MainMenu {
         );
         exitButton.setOnAction(e -> System.exit(0));
 
-        buttonsContainer.getChildren().addAll(playButton, loadButton, modesButton, settingsButton, exitButton);
+        buttonsContainer.getChildren().addAll(playButton, leaderboardButton, loadButton, modesButton, settingsButton, exitButton);
 
         // Add to root
         root.getChildren().addAll(titleLabel, subtitleLabel, buttonsContainer);
@@ -206,6 +216,90 @@ public class MainMenu {
         stage.setScene(mainScene);
     }
 
+    private void showLeaderboardView() {
+        java.util.List<GameSession> sessions = GameSaveManager.getAllSavedSessions();
+
+        VBox root = new VBox(20);
+        root.setStyle("-fx-background-color: linear-gradient(to bottom, #1a1a1a, #0d0d0d);");
+        root.setAlignment(Pos.TOP_CENTER);
+        root.setPadding(new Insets(40));
+
+        Label titleLabel = new Label("LEADERBOARD");
+        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+        titleLabel.setTextFill(Color.web("#ffd700"));
+
+        VBox sessionContainer = new VBox(15);
+        sessionContainer.setAlignment(Pos.TOP_CENTER);
+        sessionContainer.setPadding(new Insets(20));
+
+        if (sessions.isEmpty()) {
+            Label emptyLabel = new Label("No game sessions found. Save a game to create leaderboard entries.");
+            emptyLabel.setFont(Font.font("Arial", 16));
+            emptyLabel.setTextFill(Color.web("#ffffff"));
+            sessionContainer.getChildren().add(emptyLabel);
+        } else {
+            for (GameSession session : sessions) {
+                VBox entryBox = new VBox(6);
+                entryBox.setStyle(
+                    "-fx-background-color: rgba(30, 30, 30, 0.9);" +
+                    "-fx-border-color: #ffd700;" +
+                    "-fx-border-width: 1;" +
+                    "-fx-border-radius: 10;" +
+                    "-fx-background-radius: 10;" +
+                    "-fx-padding: 16;"
+                );
+
+                Label nameLabel = new Label(session.sessionName != null ? session.sessionName : "Unnamed Session");
+                nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+                nameLabel.setTextFill(Color.web("#ffffff"));
+
+                Label detailsLabel = new Label(
+                    String.format("Mode: %s | Date: %s | Duration: %s",
+                        session.gameMode != null ? session.gameMode : "Unknown",
+                        new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(session.timestamp)),
+                        session.getFormattedElapsedTime()
+                    )
+                );
+                detailsLabel.setFont(Font.font("Arial", 12));
+                detailsLabel.setTextFill(Color.web("#cccccc"));
+
+                Label winnerLabel = new Label("Result: " + session.getWinnerLabel());
+                winnerLabel.setFont(Font.font("Arial", 14));
+                winnerLabel.setTextFill(Color.web("#ffffff"));
+
+                Label scoreLabel = new Label(session.getScoreSummary());
+                scoreLabel.setFont(Font.font("Arial", 13));
+                scoreLabel.setTextFill(Color.web("#ffffff"));
+
+                entryBox.getChildren().addAll(nameLabel, detailsLabel, winnerLabel, scoreLabel);
+                sessionContainer.getChildren().add(entryBox);
+            }
+        }
+
+        ScrollPane scrollPane = new ScrollPane(sessionContainer);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        scrollPane.setPrefViewportHeight(420);
+
+        Button backButton = new Button("BACK");
+        backButton.setStyle(
+            "-fx-padding: 15 60 15 60;" +
+            "-fx-font-size: 18;" +
+            "-fx-font-weight: bold;" +
+            "-fx-background-color: #cc0000;" +
+            "-fx-text-fill: #ffffff;" +
+            "-fx-border-radius: 8;" +
+            "-fx-background-radius: 8;" +
+            "-fx-cursor: hand;"
+        );
+        backButton.setOnAction(e -> showMainMenuView());
+
+        root.getChildren().addAll(titleLabel, scrollPane, backButton);
+
+        mainScene = new Scene(root, 1120, 650);
+        stage.setScene(mainScene);
+    }
+
     private void showSettingsView() {
         // Root container
         VBox root = new VBox(20);
@@ -261,7 +355,10 @@ public class MainMenu {
         Slider bgmSlider = new Slider(0, 1.0, settings.getBgmVolume());
         bgmSlider.setStyle("-fx-control-inner-background: #1f7f4d;");
         bgmSlider.setPrefWidth(300);
-        bgmSlider.valueProperty().addListener((obs, oldVal, newVal) -> settings.setBgmVolume(newVal.doubleValue()));
+        bgmSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            settings.setBgmVolume(newVal.doubleValue());
+            SoundManager.updateBgmVolume(newVal.doubleValue());
+        });
 
         Label bgmValueLabel = new Label(String.format("%.0f%%", settings.getBgmVolume() * 100));
         bgmValueLabel.setFont(Font.font("Arial", 14));
@@ -321,7 +418,7 @@ public class MainMenu {
         resolutionLabel.setMinWidth(150);
 
         ComboBox<String> resolutionCombo = new ComboBox<>();
-        resolutionCombo.getItems().addAll("1120x650", "1280x720", "1600x900", "1920x1080");
+        resolutionCombo.getItems().addAll("1120x720", "1280x720", "1600x900", "1920x1080");
         resolutionCombo.setValue(settings.getScreenResolution());
         resolutionCombo.setStyle(
             "-fx-font-size: 14;" +
@@ -480,9 +577,10 @@ public class MainMenu {
             if (session.gameMode != null) {
                 settings.setGameMode(session.gameMode);
             }
+            // Attach the loaded session first so startNewGame() can apply it
+            game.setLoadedSession(session);
             // Start the game (it will load with the saved state)
             game.startNewGame();
-            game.setLoadedSession(session);
         } else {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Load Failed");

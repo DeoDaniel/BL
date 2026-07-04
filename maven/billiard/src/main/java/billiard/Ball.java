@@ -54,7 +54,7 @@ public class Ball {
 
         // Tentukan warna berdasarkan nomor
         Color mainColor;
-        if (number == 8) {
+        if (number == 8 || number == 9) {
             mainColor = Color.BLACK;
         } else {
             int idx = isSolid() ? number : number - 8; // 1..7

@@ -81,6 +81,18 @@ public class GameSaveManager {
         }
         return fileNames;
     }
+
+    public static java.util.List<GameSession> getAllSavedSessions() {
+        java.util.List<GameSession> sessions = new ArrayList<>();
+        for (String fileName : getSaveFileNames()) {
+            GameSession session = loadGame(fileName);
+            if (session != null) {
+                sessions.add(session);
+            }
+        }
+        sessions.sort((a, b) -> Long.compare(b.timestamp, a.timestamp));
+        return sessions;
+    }
     
     /**
      * Delete a save file

@@ -14,9 +14,10 @@ public class PlayerVsAIMode {
     private final BilliardGame game;
     private final GamePanel gamePanel;
     private String aiDifficulty;
-    private static final long AI_THINK_DELAY = 1500; // 1.5 seconds delay before AI shoots
+    private static final long AI_THINK_DELAY = 2500; // 2.5 seconds delay before AI shoots
     private long aiActionTime = 0;
     private boolean aiActionScheduled = false;
+    private boolean aiTurnPending = false;
 
     public PlayerVsAIMode(BilliardGame game, GamePanel gamePanel) {
         this.game = game;
@@ -28,16 +29,32 @@ public class PlayerVsAIMode {
      * Update AI logic each frame - should be called from GamePanel update
      */
     public void update(double deltaTime) {
-        // Check if AI player's turn and no balls are moving
-        if (isAITurn() && !areBallsMoving()) {
-            if (!aiActionScheduled) {
-                aiActionScheduled = true;
-                aiActionTime = System.currentTimeMillis();
-            } else if (System.currentTimeMillis() - aiActionTime >= AI_THINK_DELAY) {
-                executeAIMove();
+        if (!isAITurn() || game.state != GameState.AIMING || areBallsMoving()) {
+            if (!isAITurn()) {
+                aiTurnPending = false;
                 aiActionScheduled = false;
             }
+            return;
         }
+
+        if (!aiTurnPending) {
+            aiTurnPending = true;
+            aiActionScheduled = true;
+            aiActionTime = System.currentTimeMillis();
+            return;
+        }
+
+        if (aiActionScheduled && System.currentTimeMillis() - aiActionTime >= AI_THINK_DELAY) {
+            executeAIMove();
+            aiActionScheduled = false;
+            aiTurnPending = false;
+        }
+    }
+
+    public void onTurnStarted() {
+        aiTurnPending = false;
+        aiActionScheduled = false;
+        aiActionTime = 0;
     }
 
     /**
@@ -62,6 +79,10 @@ public class PlayerVsAIMode {
     private void executeAIMove() {
         if (game.state != GameState.AIMING) {
             return; // Can only shoot in AIMING state
+        }
+
+        if (!isAITurn()) {
+            return;
         }
 
         // Update difficulty from settings
@@ -153,7 +174,50 @@ public class PlayerVsAIMode {
             return null;
         }
 
-        // Find ball that's closest to any pocket
+        // Try to find a direct pocketing shot by checking pockets and clearance
+        AIShot best = null;
+        double bestPriority = Double.MAX_VALUE;
+
+        for (Ball target : shootableBalls) {
+            for (Pocket pocket : gamePanel.table.pockets) {
+                // direction from target to pocket
+                double tx = pocket.x - target.x;
+                double ty = pocket.y - target.y;
+                double distTP = Math.sqrt(tx * tx + ty * ty);
+                if (distTP < 1e-6) continue;
+                double ux = tx / distTP;
+                double uy = ty / distTP;
+
+                // contact point where the cue ball center should be at collision
+                double contactDist = target.radius * 2.0; // two-ball centers separation for equal balls
+                double contactX = target.x - ux * contactDist;
+                double contactY = target.y - uy * contactDist;
+
+                // Check path from target to pocket is clear (ignore the target itself)
+                if (!isPathClear(target.x, target.y, pocket.x, pocket.y, target)) continue;
+
+                // Check path from cue ball to contact point is clear (ignore cue and target)
+                if (!isPathClear(cueBall.x, cueBall.y, contactX, contactY, target)) continue;
+
+                // Compute angle to aim (from cue ball to contact point)
+                double angle = Math.atan2(contactY - cueBall.y, contactX - cueBall.x);
+
+                // Power proportional to distance (clamped)
+                double d = Math.hypot(contactX - cueBall.x, contactY - cueBall.y);
+                double power = Math.min(1.0, d / 150.0);
+
+                // Prioritize shorter total path (cue->contact + target->pocket)
+                double priority = d + distTP;
+                if (priority < bestPriority) {
+                    bestPriority = priority;
+                    best = new AIShot(angle, Math.max(0.6, power)); // ensure decent power
+                }
+            }
+        }
+
+        if (best != null) return best;
+
+        // Fallback: pick closest-to-pocket ball (previous behavior)
         Ball bestBall = shootableBalls.get(0);
         double bestScore = calculateDistanceToPocket(bestBall);
 
@@ -165,15 +229,42 @@ public class PlayerVsAIMode {
             }
         }
 
-        // Calculate angle with minimal randomness (±2 degrees)
         double angle = calculateAngleToTarget(cueBall, bestBall);
         double randomOffset = (Math.random() - 0.5) * Math.toRadians(4);
         angle += randomOffset;
 
-        // Full power (90-100%)
         double power = 0.90 + Math.random() * 0.10;
 
         return new AIShot(angle, power);
+    }
+
+    /**
+     * Check if the straight-line path between (x1,y1) and (x2,y2) is free of other balls.
+     * Ignores the provided excludeBall (can be null).
+     */
+    private boolean isPathClear(double x1, double y1, double x2, double y2, Ball excludeBall) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double lenSq = dx * dx + dy * dy;
+        for (Ball b : gamePanel.table.balls) {
+            if (b.sunk) continue;
+            if (b == excludeBall) continue;
+            // skip cue ball endpoints
+            // compute distance from b to segment
+            double t = 0;
+            if (lenSq > 0) {
+                t = ((b.x - x1) * dx + (b.y - y1) * dy) / lenSq;
+                t = Math.max(0, Math.min(1, t));
+            }
+            double projX = x1 + t * dx;
+            double projY = y1 + t * dy;
+            double dist = Math.hypot(b.x - projX, b.y - projY);
+            // If another ball is within a blocking distance, consider blocked
+            if (dist < b.radius * 2.0 - 2.0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -231,22 +322,15 @@ public class PlayerVsAIMode {
      */
     private void executeShot(AIShot shot) {
         Cue cue = gamePanel.cue;
-
-        // Set angle
-        cue.angle = shot.angle;
-        cue.lockAngle();
-
-        // Set power through the cue power system
-        double distanceDragged = shot.powerPercent * 150.0; // Convert power to distance
-        cue.setPower(distanceDragged);
-
-        // Execute shot
-        cue.shoot();
-
-        // Reset game state to BALLS_MOVING so GamePanel can process turn logic when balls stop
-        if (game.state == GameState.AIMING) {
+        cue.startAnimation(shot.angle, shot.powerPercent);
+        cue.setAnimationCompleteAction(() -> {
+            game.cueBallHitAnyBall = false;
+            cue.shoot();
+            cue.hide();
             game.state = GameState.BALLS_MOVING;
-        }
+        });
+        cue.show();
+        game.state = GameState.AIMING;
     }
 
     /**

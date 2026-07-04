@@ -34,12 +34,16 @@ public class BilliardGame extends Application {
     // --- HUD COMPONENTS ---
     private Label p1NameLabel;
     private Label p2NameLabel;
+    private Label p3NameLabel;
     private Label p1GroupLabel; // Label untuk menampilkan "SOLIDS" atau "STRIPES"
     private Label p2GroupLabel;
+    private Label p3GroupLabel;
     private HBox p1BallContainer; 
     private HBox p2BallContainer;
+    private HBox p3BallContainer;
     private VBox p1PanelBox;
     private VBox p2PanelBox;
+    private VBox p3PanelBox;
     private Label stopwatchLabel; // Stopwatch label untuk menampilkan waktu
     
     // Stopwatch
@@ -55,52 +59,58 @@ public class BilliardGame extends Application {
     public void start(Stage primaryStage) {
         this.frame = primaryStage;
 
+        // Start background music before showing the menu
+        SoundManager.startBackgroundMusic();
+
         // Show main menu
         MainMenu menu = new MainMenu(primaryStage, this);
         menu.show();
     }
 
-    private HBox createTopBar() {
+    private VBox createTopBar() {
         // --- PLAYER 1 SIDE (Left) ---
         p1NameLabel = new Label("PLAYER 1");
         p1NameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;");
-        
-        // Label Grup P1 (Awalnya OPEN)
-        p1GroupLabel = new Label("OPEN TABLE"); 
+        p1GroupLabel = new Label("OPEN TABLE");
         p1GroupLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 11; -fx-font-weight: bold;");
-
         p1BallContainer = new HBox(5);
         p1BallContainer.setAlignment(Pos.CENTER_LEFT);
         p1BallContainer.setPrefHeight(30);
-
-        // Susunan P1: Nama di atas, Bola & Grup di bawahnya (atau sejajar)
-        // Disini saya buat sejajar: Nama | Bola | Grup
         HBox p1Row = new HBox(15, p1NameLabel, p1GroupLabel, p1BallContainer);
         p1Row.setAlignment(Pos.CENTER_LEFT);
-        
         p1PanelBox = new VBox(2, p1Row);
         p1PanelBox.setPadding(new Insets(8, 20, 8, 20));
         p1PanelBox.setStyle("-fx-background-color: #333333; -fx-background-radius: 12; -fx-border-color: #555; -fx-border-radius: 12;");
-        
-        // --- PLAYER 2 SIDE (Right) ---
+
+        // --- PLAYER 2 SIDE (Center) ---
         p2NameLabel = new Label("PLAYER 2");
         p2NameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;");
-
-        // Label Grup P2
         p2GroupLabel = new Label("OPEN TABLE");
         p2GroupLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 11; -fx-font-weight: bold;");
-
         p2BallContainer = new HBox(5);
-        p2BallContainer.setAlignment(Pos.CENTER_RIGHT);
+        p2BallContainer.setAlignment(Pos.CENTER_LEFT);
         p2BallContainer.setPrefHeight(30);
-
-        // Susunan P2: Grup | Bola | Nama (Mirror dari P1)
-        HBox p2Row = new HBox(15, p2BallContainer, p2GroupLabel, p2NameLabel);
-        p2Row.setAlignment(Pos.CENTER_RIGHT);
-
+        HBox p2Row = new HBox(15, p2NameLabel, p2GroupLabel, p2BallContainer);
+        p2Row.setAlignment(Pos.CENTER_LEFT);
         p2PanelBox = new VBox(2, p2Row);
         p2PanelBox.setPadding(new Insets(8, 20, 8, 20));
         p2PanelBox.setStyle("-fx-background-color: #333333; -fx-background-radius: 12; -fx-border-color: #555; -fx-border-radius: 12;");
+
+        // --- PLAYER 3 SIDE (Right) ---
+        p3NameLabel = new Label("PLAYER 3");
+        p3NameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;");
+        p3GroupLabel = new Label("OPEN TABLE");
+        p3GroupLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 11; -fx-font-weight: bold;");
+        p3BallContainer = new HBox(5);
+        p3BallContainer.setAlignment(Pos.CENTER_LEFT);
+        p3BallContainer.setPrefHeight(30);
+        HBox p3Row = new HBox(15, p3NameLabel, p3GroupLabel, p3BallContainer);
+        p3Row.setAlignment(Pos.CENTER_LEFT);
+        p3PanelBox = new VBox(2, p3Row);
+        p3PanelBox.setPadding(new Insets(8, 20, 8, 20));
+        p3PanelBox.setStyle("-fx-background-color: #333333; -fx-background-radius: 12; -fx-border-color: #555; -fx-border-radius: 12;");
+        p3PanelBox.setVisible(false);
+        p3PanelBox.setManaged(false);
 
         // --- STOPWATCH (CENTER) ---
         stopwatchLabel = new Label("00:00");
@@ -112,16 +122,106 @@ public class BilliardGame extends Application {
         Region spacer2 = new Region();
         HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-        HBox topBar = new HBox(10, p1PanelBox, spacer, stopwatchLabel, spacer2, p2PanelBox);
+        HBox topBar = new HBox(10, p1PanelBox, spacer, p2PanelBox, spacer2, p3PanelBox);
         topBar.setPadding(new Insets(10));
         topBar.setStyle("-fx-background-color: #1a1a1a; -fx-border-color: #444; -fx-border-width: 0 0 2 0;");
         topBar.setAlignment(Pos.CENTER);
+
+        VBox fullTopBar = new VBox(6);
+        fullTopBar.setPadding(new Insets(10));
+        fullTopBar.setStyle("-fx-background-color: #1a1a1a; -fx-border-color: #444; -fx-border-width: 0 0 2 0;");
+
+        HBox timerRow = new HBox(stopwatchLabel);
+        timerRow.setAlignment(Pos.CENTER);
+        fullTopBar.getChildren().addAll(topBar, timerRow);
         
-        return topBar;
+        return fullTopBar;
     }
 
     public void setLoadedSession(GameSession session) {
         this.loadedSession = session;
+    }
+
+    /**
+     * Apply a loaded GameSession to the current game objects (table, players, stopwatch).
+     */
+    public void applyLoadedSession(GameSession session) {
+        if (session == null) return;
+
+        // Restore players
+        players.clear();
+        for (int i = 0; i < session.playerNames.size(); i++) {
+            String name = session.playerNames.get(i);
+            Player p = new Player(name);
+            if (i < session.playerScores.size()) p.ballsPocketed = session.playerScores.get(i);
+            if (i < session.playerGroups.size()) {
+                String g = session.playerGroups.get(i);
+                if (g != null && !"null".equals(g)) {
+                    try {
+                        p.assignedGroup = BallGroup.valueOf(g);
+                    } catch (Exception ex) {
+                        p.assignedGroup = null;
+                    }
+                }
+            }
+            players.add(p);
+        }
+
+        // Set current player
+        if (session.currentPlayerIndex >= 0 && session.currentPlayerIndex < players.size()) {
+            currentPlayer = players.get(session.currentPlayerIndex);
+            currentPlayer.hasTurn = true;
+        }
+
+        // Restore balls into the table
+        panel.table.balls.clear();
+        for (GameSession.BallState bs : session.ballStates) {
+            Ball b = new Ball(bs.x, bs.y, bs.ballNumber);
+            b.vx = bs.vx;
+            b.vy = bs.vy;
+            b.sunk = bs.sunk;
+            b.radius = bs.radius;
+            panel.table.balls.add(b);
+        }
+
+        // Restore which balls were pocketed by which player
+        for (GameSession.BallState bs : session.ballStates) {
+            if (bs.pocketedByPlayer >= 0 && bs.pocketedByPlayer < players.size()) {
+                // find the corresponding ball instance in table
+                for (Ball b : panel.table.balls) {
+                    if (b.number == bs.ballNumber) {
+                        players.get(bs.pocketedByPlayer).pocketedBalls.add(b);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Ensure cue reference points to the correct cue ball instance
+        Ball cueBall = null;
+        for (Ball b : panel.table.balls) {
+            if (b.number == 0) {
+                cueBall = b;
+                break;
+            }
+        }
+        if (cueBall != null) {
+            panel.cue.cueBall = cueBall;
+            panel.cue.setTableReference(panel.table);
+        }
+
+        // Restore game state
+        try {
+            this.state = GameState.valueOf(session.gameState);
+        } catch (Exception ex) {
+            this.state = GameState.AIMING;
+        }
+
+        // Restore stopwatch
+        this.stopwatch.setElapsedMillis(session.elapsedTimeMillis);
+
+        // Update HUD to reflect restored state
+        updateHud();
     }
 
     public static void main(String[] args) {
@@ -141,13 +241,23 @@ public class BilliardGame extends Application {
         // Clear previous players if any
         players.clear();
         aiMode = null; // Reset AI mode
+        Settings.getInstance().setGameMode(gameMode);
         
         // Init Players based on game mode
         if ("Player vs AI".equals(gameMode)) {
             players.add(new Player("PLAYER"));
             players.add(new Player("Computer (AI)"));
+        } else if ("3 Players".equals(gameMode)) {
+            players.add(new Player("PLAYER 1"));
+            players.add(new Player("PLAYER 2"));
+            players.add(new Player("PLAYER 3"));
+        } else if ("9-Ball".equals(gameMode)) {
+            players.add(new Player("PLAYER 1"));
+            players.add(new Player("PLAYER 2"));
+        } else if ("Straight Pool".equals(gameMode)) {
+            players.add(new Player("PLAYER 1"));
+            players.add(new Player("PLAYER 2"));
         } else {
-            // Original, 3 Players, 9-Ball, Straight Pool - all use 2 players for now
             players.add(new Player("PLAYER 1"));
             players.add(new Player("PLAYER 2"));
         }
@@ -164,18 +274,24 @@ public class BilliardGame extends Application {
         center.setStyle("-fx-background-color: #0d0d0d;"); 
         
         // Game Panel (pass both root and center)
-        panel = new GamePanel(1120, 560, this, root, center);
+        panel = new GamePanel(1120, 580, this, root, center);
         
         // Initialize AI mode if "Player vs AI"
         if ("Player vs AI".equals(gameMode)) {
             aiMode = new PlayerVsAIMode(this, panel);
         }
         
+        // If a session was loaded before starting, apply it now
+        if (this.loadedSession != null) {
+            applyLoadedSession(this.loadedSession);
+            this.loadedSession = null;
+        }
+        
         center.getChildren().add(panel);
         root.setCenter(center);
 
         // --- CUSTOM HUD SETUP ---
-        HBox topBar = createTopBar();
+        VBox topBar = createTopBar();
         root.setTop(topBar);
 
         // Update pertama kali
@@ -184,7 +300,7 @@ public class BilliardGame extends Application {
         // Start stopwatch when game begins
         stopwatch.start();
 
-        Scene scene = new Scene(root, 1120, 650); 
+        Scene scene = new Scene(root, 1120, 680); 
 
         frame.setTitle("Billiard Game JavaFX");
         frame.setScene(scene);
@@ -198,7 +314,9 @@ public class BilliardGame extends Application {
     }
 
     public Player getOtherPlayer() {
-        return currentPlayer == players.get(0) ? players.get(1) : players.get(0);
+        if (players.isEmpty() || currentPlayer == null) return null;
+        int idx = players.indexOf(currentPlayer);
+        return players.get((idx + 1) % players.size());
     }
 
     public void switchTurn() {
@@ -208,6 +326,9 @@ public class BilliardGame extends Application {
         currentPlayer.hasTurn = true;
         state = GameState.AIMING;
         startTurn();
+        if (aiMode != null) {
+            aiMode.onTurnStarted();
+        }
         updateHud();
     }
 
@@ -223,7 +344,28 @@ public class BilliardGame extends Application {
                 return;
             }
 
-            // 2. Cek Bola 8 (Hitam) - LOGIKA BARU
+            // 2. Special handling for 9-Ball and Straight Pool
+            String mode = Settings.getInstance().getGameMode();
+            if ("9-Ball".equals(mode) && ball.number == 9) {
+                currentPlayer.pocketBall(ball);
+                state = GameState.GAME_OVER;
+                ball8Winner = currentPlayer.name;
+                updateHud();
+                return;
+            }
+
+            if ("Straight Pool".equals(mode)) {
+                currentPlayer.pocketBall(ball);
+                scoredThisTurn = true;
+                updateHud();
+                if (currentPlayer.ballsPocketed >= 100) {
+                    state = GameState.GAME_OVER;
+                    ball8Winner = currentPlayer.name;
+                }
+                return;
+            }
+
+            // 3. Cek Bola 8 (Hitam) - LOGIKA BARU
             if (ball.number == 8) {
                 // Cek apakah pemain saat ini sudah memasukkan semua 7 bola grupnya
                 boolean currentPlayerFinishedGroup = hasPlayerFinishedGroup(currentPlayer);
@@ -256,7 +398,7 @@ public class BilliardGame extends Application {
                 return;
             }
 
-            // 3. Logika Penetapan Kepemilikan Bola
+            // 4. Logika Penetapan Kepemilikan Bola
             if (currentPlayer.assignedGroup == null) {
                 // --- KONDISI OPEN TABLE (Belum ada grup) ---
                 // Pemain yang memasukkan bola pertama kali menentukan grupnya
@@ -380,18 +522,38 @@ public class BilliardGame extends Application {
     // --- LOGIKA UPDATE TAMPILAN (HUD) ---
 
     public void updateHud() {
-        Player p1 = players.get(0);
-        Player p2 = players.get(1);
+        if (players.isEmpty()) return;
 
-        highlightActivePlayer(p1, p1PanelBox);
-        highlightActivePlayer(p2, p2PanelBox);
+        if ("Player vs AI".equals(Settings.getInstance().getGameMode())) {
+            p2NameLabel.setText("Computer (AI)");
+        } else {
+            p2NameLabel.setText("PLAYER 2");
+        }
 
-        // Update tulisan SOLIDS / STRIPES
-        updateGroupLabel(p1, p1GroupLabel);
-        updateGroupLabel(p2, p2GroupLabel);
+        Player p1 = players.size() > 0 ? players.get(0) : null;
+        Player p2 = players.size() > 1 ? players.get(1) : null;
+        Player p3 = players.size() > 2 ? players.get(2) : null;
 
-        renderBallsToContainer(p1, p1BallContainer);
-        renderBallsToContainer(p2, p2BallContainer);
+        if (p1 != null) {
+            highlightActivePlayer(p1, p1PanelBox);
+            updateGroupLabel(p1, p1GroupLabel);
+            renderBallsToContainer(p1, p1BallContainer);
+        }
+        if (p2 != null) {
+            highlightActivePlayer(p2, p2PanelBox);
+            updateGroupLabel(p2, p2GroupLabel);
+            renderBallsToContainer(p2, p2BallContainer);
+        }
+        if (p3 != null) {
+            highlightActivePlayer(p3, p3PanelBox);
+            updateGroupLabel(p3, p3GroupLabel);
+            renderBallsToContainer(p3, p3BallContainer);
+            p3PanelBox.setVisible(true);
+            p3PanelBox.setManaged(true);
+        } else {
+            p3PanelBox.setVisible(false);
+            p3PanelBox.setManaged(false);
+        }
         
         // Update stopwatch display
         if (stopwatchLabel != null) {

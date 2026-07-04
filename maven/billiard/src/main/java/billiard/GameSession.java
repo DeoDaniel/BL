@@ -13,6 +13,8 @@ public class GameSession implements Serializable {
     public String gameMode;
     public String sessionName;
     public long timestamp;
+    public String winnerName;
+    public boolean gameFinished;
     
     // Game state
     public List<BallState> ballStates;
@@ -32,8 +34,34 @@ public class GameSession implements Serializable {
         this.playerGroups = new ArrayList<>();
         this.timestamp = System.currentTimeMillis();
         this.elapsedTimeMillis = 0;
+        this.gameFinished = false;
+        this.winnerName = null;
     }
     
+    public String getFormattedElapsedTime() {
+        long totalSeconds = elapsedTimeMillis / 1000;
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    public String getWinnerLabel() {
+        return gameFinished ? (winnerName != null ? winnerName : "Draw") : "In progress";
+    }
+
+    public String getScoreSummary() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < playerNames.size(); i++) {
+            String name = playerNames.get(i);
+            int score = i < playerScores.size() ? playerScores.get(i) : 0;
+            if (i > 0) {
+                sb.append(" | ");
+            }
+            sb.append(name).append(": ").append(score);
+        }
+        return sb.toString();
+    }
+
     /**
      * Represents the state of a single ball
      */

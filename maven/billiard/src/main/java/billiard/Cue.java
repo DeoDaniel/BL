@@ -19,6 +19,13 @@ public class Cue {
     
     // State untuk two-stage aiming
     public boolean angleLocked = false; // Apakah sudut sudah dikunci
+    private double animationProgress = 0;
+    private double animationTargetAngle = 0;
+    private double animationTargetPower = 0;
+    private boolean animating = false;
+    private long animationStartTime = 0;
+    private Runnable animationCompleteAction = null;
+    private static final long ANIMATION_DURATION_MS = 900;
 
     public Cue(Ball cueBall) {
         this.cueBall = cueBall;
@@ -63,6 +70,50 @@ public class Cue {
         cueBall.applyForce(power, angle);
         powerPercent = 0;
         angleLocked = false; // Reset lock setelah menembak
+        // Play cue hit SFX
+        SoundManager.playCueHit();
+    }
+
+    public void updateAnimation(double dt) {
+        if (!animating) return;
+
+        long elapsed = System.currentTimeMillis() - animationStartTime;
+        double t = Math.min(1.0, elapsed / (double) ANIMATION_DURATION_MS);
+        double eased = 1.0 - Math.pow(1.0 - t, 3.0);
+
+        if (t < 0.35) {
+            angle = angle + (animationTargetAngle - angle) * 0.2;
+        } else if (t < 0.8) {
+            angle = animationTargetAngle;
+            powerPercent = Math.max(0, Math.min(1.0, animationTargetPower * (eased - 0.35) / 0.45));
+        } else {
+            powerPercent = animationTargetPower;
+        }
+
+        if (t >= 1.0) {
+            animating = false;
+            angleLocked = true;
+            powerPercent = animationTargetPower;
+
+            if (animationCompleteAction != null) {
+                Runnable action = animationCompleteAction;
+                animationCompleteAction = null;
+                action.run();
+            }
+        }
+    }
+
+    public void startAnimation(double targetAngle, double targetPower) {
+        this.animationTargetAngle = targetAngle;
+        this.animationTargetPower = Math.min(1.0, Math.max(0.0, targetPower));
+        this.animationStartTime = System.currentTimeMillis();
+        this.animating = true;
+        this.angleLocked = false;
+        this.powerPercent = 0;
+    }
+
+    public void setAnimationCompleteAction(Runnable action) {
+        this.animationCompleteAction = action;
     }
 
     public void render(GraphicsContext g, double powerPercent) {

@@ -10,7 +10,7 @@ public class Settings {
     private double sfxVolume = 0.7;
     private double bgmVolume = 0.7;
     private String aiDifficulty = "Medium";
-    private String screenResolution = "1120x650";
+    private String screenResolution = "1120x720";
     
     private Settings() {
     }

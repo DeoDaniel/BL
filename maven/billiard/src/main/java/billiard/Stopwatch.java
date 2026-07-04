@@ -61,4 +61,13 @@ public class Stopwatch {
     public boolean isRunning() {
         return running;
     }
+
+    /**
+     * Set elapsed time (ms) for restoring from save. Sets stopwatch to paused state.
+     */
+    public void setElapsedMillis(long ms) {
+        this.pausedTime = Math.max(0, ms);
+        this.running = false;
+        this.startTime = System.currentTimeMillis() - this.pausedTime;
+    }
 }
